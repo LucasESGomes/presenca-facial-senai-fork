@@ -1,9 +1,8 @@
 import BaseService from "./BaseService.js";
 import ClassSession from "../models/classSessionModel.js";
 import ClassService from "./ClassService.js";
-import Attendance from "../models/attendanceModel.js";
-import Student from "../models/studentModel.js";
-import { NotFoundError } from "../errors/appError.js";
+import AttendanceService from "./AttendanceService.js";
+import { NotFoundError, ValidationError } from "../errors/appError.js";
 
 class ClassSessionService extends BaseService {
     constructor() {
@@ -11,145 +10,124 @@ class ClassSessionService extends BaseService {
     }
 
     /**
-     * Cria uma nova sessão de aula para uma turma.
+     * Cria uma nova sessão de aula
+     * - Usa classId
+     * - Usa teacherId vindo do JWT
+     * - Sessão nasce aberta
      */
-    async createSession({ classCode, teacherId }) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    async create({ classId, name, date, teacherId, room }) {
+        if (!classId) {
+            throw new ValidationError("O ID da turma é obrigatório.");
+        }
 
-        return super.create({
-            classCode,
+        const classExists = await ClassService.getById(classId);
+        if (!classExists) {
+            throw new NotFoundError("Turma não encontrada.");
+        }
+
+        const session = await super.create({
+            class: classId,
+            name,
+            date,
             teacher: teacherId,
-            date: today
+            room,
+            status: "open",
         });
+
+        await AttendanceService.consumePreAttendances(session._id);
+        return session;
     }
 
     /**
-     * Marca presença manual do professor dentro da sessão.
+     * Busca sessão por ID
      */
-    async markAttendanceManually(sessionId, studentId, status, recordedBy) {
-        const session = await ClassSession.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão de aula não encontrada.");
+    async getById(id) {
+        const session = await this.model
+            .findById(id)
+            .populate("classId", "code course shift year")
+            .populate("teacher", "name email")
+            .populate("room", "name location");
 
-        const foundClass = await ClassService.getById(session.classId);
-        if (!foundClass) throw new NotFoundError("Turma não encontrada.");
-        const classCode = foundClass.code;
+        if (!session) {
+            throw new NotFoundError("Sessão de aula não encontrada.");
+        }
 
-        const alreadyExists = await Attendance.findOne({
-            student: studentId,
-            date: session.date,
-            classCode: classCode,
-            viaFacial: true,
-            sessionId: session._id,
-            method: "manual",
-        });
-
-        if (alreadyExists) return alreadyExists;
-        
-        const attendance = await Attendance.create({
-            sessionId,
-            student: studentId,
-            classCode: classCode,
-            date: session.date,
-            status,
-            checkInTime: new Date(),
-            recordedBy,
-            method: "manual",
-            viaFacial: false
-        });
-
-        return attendance;
-
+        return session;
     }
 
     /**
-     * Marca presença automática por reconhecimento facial.
+     * Lista sessões de uma turma
      */
-    async markAttendanceByFace(sessionId, facialId) {
-        const session = await ClassSession.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão não encontrada.");
-
-        const student = await Student.findOne({ facialId });
-        if (!student) throw new NotFoundError("Aluno não encontrado para o facialId.");
-
-        const alreadyExists = await Attendance.findOne({
-            student: student._id,
-            date: session.date,
-            classCode: session.classCode,
-            viaFacial: true,
-            sessionId: session._id,
-            method: "facial",
-        });
-
-        if (alreadyExists) return alreadyExists;
-
-        const attendance = await Attendance.create({
-            student: student._id,
-            classCode: session.classCode,
-            date: session.date,
-            status: "presente",
-            checkInTime: new Date(),
-            viaFacial: true
-        });
-
-        session.attendances.push(attendance._id);
-        await session.save();
-
-        return attendance;
+    async getByClass(classId) {
+        return this.model
+            .find({ class: classId })
+            .populate("teacher", "name")
+            .populate("room", "name location")
+            .sort({ date: -1 });
     }
 
     /**
-     * Fecha a sessão e impede novas presenças.
+     * Lista sessões de um professor
+     */
+    async getByTeacher(teacherId) {
+        return this.model
+            .find({ teacher: teacherId })
+            .populate("classId", "code")
+            .populate("room", "name")
+            .sort({ date: -1 });
+    }
+
+    /**
+     * Busca sessão aberta por sala e data
+     * (usado pelo AttendanceService / Totem)
+     */
+    async getOpenSessionByRoom(roomId, date) {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+
+        const session = await this.model.findOne({
+            room: roomId,
+            status: "open",
+            date: { $gte: start, $lte: end },
+        });
+
+        if (!session) {
+            throw new NotFoundError("Nenhuma sessão aberta encontrada para esta sala.");
+        }
+
+        return session;
+    }
+
+    /**
+     * Atualiza dados básicos da sessão
+     */
+    async updateSession(sessionId, updateData) {
+        return super.update(sessionId, updateData);
+    }
+
+    /**
+     * Fecha a sessão
      */
     async closeSession(sessionId) {
-        const session = await ClassSession.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão não encontrada.");
+        const session = await this.model.findById(sessionId);
+        if (!session) {
+            throw new NotFoundError("Sessão não encontrada.");
+        }
 
-        session.isOpen = false;
+        session.status = "closed";
         await session.save();
 
         return session;
     }
 
     /**
-     * Busca todas as sessões de uma turma em um dia.
+     * Remove a sessão
      */
-    async getSessionsOfDay(classCode) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return this.model.find({
-            classCode,
-            date: today
-        })
-            .populate("teacher", "name")
-            .populate("attendances");
-    }
-
-    async close(sessionId, userId) {
-        const session = await this.model.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão não encontrada.");
-
-        session.isClosed = true;
-        session.lastEditedBy = userId;
-        session.lastEditedAt = new Date();
-
-        return session.save();
-    }
-
-    async resetSessionAttendances(sessionId, userId) {
-        const session = await this.model.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão não encontrada.");
-
-        // Apaga todas as presenças da sessão
-        await Attendance.deleteMany({ session: sessionId });
-
-        // Auditoria
-        session.lastEditedBy = userId;
-        session.lastEditedAt = new Date();
-        await session.save();
-
-        return { message: "Presenças resetadas com sucesso." };
+    async deleteSession(sessionId) {
+        return super.delete(sessionId);
     }
 }
 

@@ -7,6 +7,8 @@ import {
     ConflictError,
 } from "../errors/appError.js";
 
+
+
 class StudentService extends BaseService {
     constructor() {
         super(Student);
@@ -43,7 +45,7 @@ class StudentService extends BaseService {
     async getByClassCode(id) {
         if (!id) throw new ValidationError("O ID da turma é obrigatório.");
 
-        const foundClass = await Class.findById(id);
+        const foundClass = await Class.findOne({ code: id });
         if (!foundClass) throw new NotFoundError("Turma não encontrada.");
 
         const classCode = foundClass.code;
@@ -54,7 +56,7 @@ class StudentService extends BaseService {
         });
 
         if (!students.length) {
-            throw new NotFoundError("Nenhum aluno encontrado para esta turma.");
+            return [];
         }
 
         return students;
@@ -106,6 +108,11 @@ class StudentService extends BaseService {
         const student = await this.model.findById(studentId);
         if (!student) throw new NotFoundError("Aluno não encontrado.");
 
+        const classExists = await Class.findOne({ code: classCode });
+        if (!classExists) {
+            throw new NotFoundError("Turma não encontrada.");
+        }
+
         // evita duplicidade
         if (!student.classes.includes(classCode)) {
             student.classes.push(classCode);
@@ -128,6 +135,74 @@ class StudentService extends BaseService {
         await student.save();
 
         return student;
+    }
+
+    /**
+ * Retorna os dados de todos os alunos para uso na API de reconhecimento facial
+ * Estrutura:
+ * [
+ *   {
+ *     _id: "<id do aluno>",
+ *     facial: "<facialId>",
+ *     salas: ["<classId1>", "<classId2>", ...]
+ *   }
+ * ]
+ */
+    async loadAllFacesData() {
+        // Busca apenas alunos ativos com facialId
+        const students = await this.model.find(
+            { isActive: true, facialId: { $exists: true, $ne: null } },
+            "_id facialId classes"
+        ).lean();
+
+        /**
+         * Cache em memória:
+         * {
+         *   "I2C": "654fa1b2c3...",
+         *   "I3A": "654fa1b2d4..."
+         * }
+         */
+        const knownClassesByCode = {};
+
+        const result = [];
+
+        for (const student of students) {
+            const classIds = [];
+
+            for (const classCode of student.classes) {
+                const normalizedCode = classCode.toUpperCase();
+
+                // Se já está no cache, reutiliza
+                if (knownClassesByCode[normalizedCode]) {
+                    classIds.push(knownClassesByCode[normalizedCode]);
+                    continue;
+                }
+
+                // Busca no banco apenas se não estiver em memória
+                const foundClass = await Class.findOne(
+                    { code: normalizedCode },
+                    "_id"
+                ).lean();
+
+                // Se a turma existir, cacheia
+                if (foundClass) {
+                    const classId = foundClass._id.toString();
+                    knownClassesByCode[normalizedCode] = classId;
+                    classIds.push(classId);
+                }
+            }
+
+            // Só adiciona se o aluno tiver ao menos uma turma válida
+            if (classIds.length > 0) {
+                result.push({
+                    _id: student._id.toString(),
+                    facial: student.facialId,
+                    salas: classIds
+                });
+            }
+        }
+
+        return result;
     }
 }
 

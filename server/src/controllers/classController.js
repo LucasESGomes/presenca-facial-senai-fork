@@ -4,79 +4,114 @@ import StudentService from "../services/StudentService.js";
 import controllerWrapper from "../utils/controllerWrapper.js";
 
 const classController = {
-    // Criar turma
     create: controllerWrapper(async (req, res) => {
         const classData = await ClassService.create(req.body);
         return ApiResponse.CREATED(res, "Turma criada com sucesso.", classData);
     }),
 
-    // Listar todas as turmas
     getAll: controllerWrapper(async (req, res) => {
         const classes = await ClassService.getAll();
         return ApiResponse.OK(res, "", classes);
     }),
 
-    // Buscar turma pelo ID
     getById: controllerWrapper(async (req, res) => {
         const id = req.params.id;
         const classData = await ClassService.getById(id);
         return ApiResponse.OK(res, "", classData);
     }),
 
-    // Buscar turma pelo código (ex: I2P4) — rota /name/:name
+    // Buscar turma pelo código (ex: I2P4)
     getByName: controllerWrapper(async (req, res) => {
         const { name } = req.params;
-        // delega ao service que usa 'code' internamente
         const classData = await ClassService.getByCode(name);
         return ApiResponse.OK(res, "", classData);
     }),
 
-    // Atualizar turma
     update: controllerWrapper(async (req, res) => {
         const id = req.params.id;
         const updatedClass = await ClassService.updateClass(id, req.body);
         return ApiResponse.OK(res, "Turma atualizada com sucesso.", updatedClass);
     }),
 
-    // Deletar turma
     delete: controllerWrapper(async (req, res) => {
         const id = req.params.id;
         await ClassService.delete(id);
         return ApiResponse.NO_CONTENT(res, "Turma deletada com sucesso.");
     }),
 
-    // Listar professores autorizados da turma
+    /* ==========================
+       PROFESSORES
+    ========================== */
+
     getTeachers: controllerWrapper(async (req, res) => {
         const id = req.params.id;
         const classData = await ClassService.getTeachers(id);
+        return ApiResponse.OK(res, "", classData.teachers || []);
+    }),
+
+    addTeacher: controllerWrapper(async (req, res) => {
+        const { id, teacherId } = req.params;
+        const updatedClass = await ClassService.addTeacher(id, teacherId);
+        return ApiResponse.OK(res, "Professor adicionado à turma com sucesso.", updatedClass);
+    }),
+
+    removeTeacher: controllerWrapper(async (req, res) => {
+        const { id, teacherId } = req.params;
+        const updatedClass = await ClassService.removeTeacher(id, teacherId);
+        return ApiResponse.OK(res, "Professor removido da turma com sucesso.", updatedClass);
+    }),
+
+    /* ==========================
+       SALAS (ROOMS)
+    ========================== */
+
+    getRooms: controllerWrapper(async (req, res) => {
+        const classData = await ClassService.getById(req.params.id);
 
         if (!classData) {
             return ApiResponse.NOTFOUND(res, "Turma não encontrada.");
         }
 
-        return ApiResponse.OK(res, "", classData.teachers || []);
+        // popula os dados das rooms
+        await classData.populate("rooms");
+
+        return ApiResponse.OK(res, "", classData.rooms || []);
     }),
 
-    // Adicionar professor autorizado à turma
-    addTeacher: controllerWrapper(async (req, res) => {
+
+    setRooms: controllerWrapper(async (req, res) => {
         const id = req.params.id;
-        const teacherId = req.params.teacherId;
-        const updatedClass = await ClassService.addTeacher(id, teacherId);
-        return ApiResponse.OK(res, "Professor adicionado à turma com sucesso.", updatedClass);
+        const { rooms } = req.body; // array de roomIds
+        const updatedClass = await ClassService.setRooms(id, rooms);
+        return ApiResponse.OK(res, "Salas da turma atualizadas com sucesso.", updatedClass);
     }),
 
-    // Remover professor autorizado da turma
-    removeTeacher: controllerWrapper(async (req, res) => {
-        const id = req.params.id;
-        const teacherId = req.params.teacherId;
-        const updatedClass = await ClassService.removeTeacher(id, teacherId);
-        return ApiResponse.OK(res, "Professor removido da turma com sucesso.", updatedClass);
+    addRoom: controllerWrapper(async (req, res) => {
+        const { id, roomId } = req.params;
+        const updatedClass = await ClassService.addRoom(id, roomId);
+        return ApiResponse.OK(res, "Sala adicionada à turma com sucesso.", updatedClass);
     }),
 
-    getStudents: controllerWrapper(async (req, res) =>{
+    removeRoom: controllerWrapper(async (req, res) => {
+        const { id, roomId } = req.params;
+        const updatedClass = await ClassService.removeRoom(id, roomId);
+        return ApiResponse.OK(res, "Sala removida da turma com sucesso.", updatedClass);
+    }),
+
+    /* ==========================
+       ALUNOS
+    ========================== */
+
+    getStudents: controllerWrapper(async (req, res) => {
         const id = req.params.id;
-        const students = await StudentService.getByClassCode(id);
-        return ApiResponse.OK(res, "", students);        
+
+        // Busca a turma primeiro
+        const classData = await ClassService.getById(id);
+
+        // Usa o code corretamente
+        const students = await StudentService.getByClassCode(classData.code);
+
+        return ApiResponse.OK(res, "", students);
     }),
 };
 

@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import xss from "xss-clean";
 import { configDotenv } from "dotenv";
 import { connectDB } from "./config/db.js";
 
@@ -18,7 +17,7 @@ connectDB();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({limit: "100kb"}));
 app.use(cors());
-// app.use(helmet());
+app.use(helmet());
 
 // Rate limiting (exemplo: máx. 100 reqs por 15 min)
 const limiter = rateLimit({
@@ -37,6 +36,8 @@ import classRoutes from './routes/classRoutes.js'
 import studentRoutes from './routes/studentRoutes.js';
 import classSessionRoutes from './routes/classSessionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';    
+import totemRoutes from './routes/totemRoutes.js';
 
 app.use('/api/health', healthRoutes);
 app.use('/api/users', userRoutes);
@@ -44,6 +45,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/class-sessions', classSessionRoutes);
-app.use('/api/attendances', attendanceRoutes)
+app.use('/api/attendances', attendanceRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/totems', totemRoutes);
 
 export default app;

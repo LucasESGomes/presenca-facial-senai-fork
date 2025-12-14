@@ -2,9 +2,15 @@ import mongoose from "mongoose";
 
 const attendanceSchema = new mongoose.Schema(
     {
-        sessionId: {
+        session: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "ClassSession",
+            required: true,
+        },
+
+        class: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Class",
             required: true,
         },
 
@@ -12,12 +18,6 @@ const attendanceSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Student",
             required: true,
-        },
-
-        classCode: {
-            type: String,
-            required: true,
-            uppercase: true,
         },
 
         status: {
@@ -31,24 +31,23 @@ const attendanceSchema = new mongoose.Schema(
             default: null,
         },
 
+        /**
+         * Quem registrou a presença:
+         * - null → reconhecimento facial (totem)
+         * - User._id → professor/coordenador
+         */
         recordedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             default: null,
         },
-
-        viaFacial: {
-            type: Boolean,
-            default: true,
-        },
-
-        method: {
-            type: String,
-            enum: ["facial", "manual"],
-            required: true,
-        }
     },
     { timestamps: true }
+);
+
+attendanceSchema.index(
+    { session: 1, student: 1 },
+    { unique: true }
 );
 
 export default mongoose.model("Attendance", attendanceSchema);

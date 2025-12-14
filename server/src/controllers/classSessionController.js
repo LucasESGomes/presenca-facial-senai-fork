@@ -3,75 +3,69 @@ import ClassSessionService from "../services/ClassSessionService.js";
 import controllerWrapper from "../utils/controllerWrapper.js";
 
 const classSessionController = {
-    // Criar sessão
+    /**
+     * Criar sessão de aula
+     * teacherId vem do JWT
+     */
     create: controllerWrapper(async (req, res) => {
         const teacherId = req.user.id;
-        const data = {...req.body, teacherId};
+        const data = { ...req.body, teacherId };
+
         const session = await ClassSessionService.create(data);
         return ApiResponse.CREATED(res, "Sessão criada com sucesso.", session);
     }),
 
-    // Buscar sessão por ID
+    /**
+     * Buscar sessão por ID
+     */
     getById: controllerWrapper(async (req, res) => {
         const session = await ClassSessionService.getById(req.params.id);
         return ApiResponse.OK(res, "", session);
     }),
 
-    // Buscar sessões de uma turma
+    /**
+     * Buscar sessões de uma turma
+     */
     getByClass: controllerWrapper(async (req, res) => {
-        const sessions = await ClassSessionService.getAll({
-            classId: req.params.classId
-        });
+        const { classId } = req.params;
+        const sessions = await ClassSessionService.getByClass(classId);
         return ApiResponse.OK(res, "", sessions);
     }),
 
-    // Buscar sessões de um professor
+    /**
+     * Buscar sessões de um professor
+     */
     getByTeacher: controllerWrapper(async (req, res) => {
-        const sessions = await ClassSessionService.getAll({
-            teacherId: req.params.teacherId
-        });
+        const { teacherId } = req.params;
+        const sessions = await ClassSessionService.getByTeacher(teacherId);
         return ApiResponse.OK(res, "", sessions);
     }),
 
-    // Atualizar sessão
+    /**
+     * Atualizar dados básicos da sessão
+     */
     update: controllerWrapper(async (req, res) => {
-        const session = await ClassSessionService.update(req.params.id, req.body);
+        const session = await ClassSessionService.updateSession(
+            req.params.id,
+            req.body
+        );
         return ApiResponse.OK(res, "Sessão atualizada com sucesso.", session);
     }),
 
-    // Fechar sessão
+    /**
+     * Fechar sessão
+     */
     closeSession: controllerWrapper(async (req, res) => {
         const session = await ClassSessionService.closeSession(req.params.id);
         return ApiResponse.OK(res, "Sessão fechada com sucesso.", session);
     }),
 
-    // Reset total de presença
-    resetSession: controllerWrapper(async (req, res) => {
-        const session = await ClassSessionService.resetSessionAttendances(req.params.id);
-        return ApiResponse.OK(res, "Sessão resetada com sucesso.", session);
-    }),
-
-    // Deletar sessão
+    /**
+     * Deletar sessão
+     */
     delete: controllerWrapper(async (req, res) => {
-        await ClassSessionService.delete(req.params.id);
+        await ClassSessionService.deleteSession(req.params.id);
         return ApiResponse.NO_CONTENT(res, "Sessão removida com sucesso.");
-    }),
-
-    // Atualizar registro individual de presença
-    updateStudentRecord: controllerWrapper(async (req, res) => {
-        const { id, studentId } = req.params;
-        const attendance = await ClassSessionService.updateAttendance(
-            id,
-            studentId,
-            req.body
-        );
-        return ApiResponse.OK(res, "Presença atualizada com sucesso.", attendance);
-    }),
-
-    // Buscar todos os registros de presença da sessão
-    getAttendanceRecords: controllerWrapper(async (req, res) => {
-        const records = await ClassSessionService.getAttendanceBySession(req.params.id);
-        return ApiResponse.OK(res, "", records);
     }),
 };
 

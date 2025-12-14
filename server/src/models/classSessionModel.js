@@ -1,20 +1,28 @@
 import mongoose from "mongoose";
 
-const sessionSchema = new mongoose.Schema(
+const classSessionSchema = new mongoose.Schema(
     {
-        classId: {
+        class: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Class",
-            required: true
+            required: true,
+            index: true
         },
 
-        teacherId: {
+        room: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Room",
+            required: true,
+            index: true
+        },
+
+        teacher: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true
         },
 
-        name: { 
+        name: {
             type: String,
             required: true,
             trim: true,
@@ -24,16 +32,25 @@ const sessionSchema = new mongoose.Schema(
 
         date: {
             type: Date,
-            required: true
+            required: true,
+            index: true
         },
 
         status: {
             type: String,
             enum: ["open", "closed"],
-            default: "open"
+            default: "open",
+            index: true
+        },
+
+        closedAt: {
+            type: Date,
+            default: null
         }
     },
-    { timestamps: true }
+    {
+        timestamps: true
+    }
 );
 
-export default mongoose.model("Session", sessionSchema);
+export default mongoose.model("ClassSession", classSessionSchema);

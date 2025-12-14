@@ -57,7 +57,20 @@ const baseSchema = {
         )
         .messages({
             "array.base": "A lista de professores deve ser um array."
-        })
+        }),
+
+    // 🆕 Salas físicas associadas à turma
+    rooms: Joi.array()
+        .items(
+            Joi.string()
+                .regex(/^[0-9a-fA-F]{24}$/)
+                .messages({
+                    "string.pattern.base": "Cada sala deve ser um ObjectId válido."
+                })
+        )
+        .messages({
+            "array.base": "A lista de salas deve ser um array."
+        }),
 };
 
 /**
@@ -70,7 +83,8 @@ export const classSchemas = {
         course: baseSchema.course.required(),
         shift: baseSchema.shift.required(),
         year: baseSchema.year.required(),
-        teachers: baseSchema.teachers.optional()
+        teachers: baseSchema.teachers.optional(),
+        rooms: baseSchema.rooms.optional(),
     }),
 
     // Atualização de turma
@@ -79,10 +93,12 @@ export const classSchemas = {
         course: baseSchema.course.optional(),
         shift: baseSchema.shift.optional(),
         year: baseSchema.year.optional(),
-        teachers: baseSchema.teachers.optional()
+        teachers: baseSchema.teachers.optional(),
+        rooms: baseSchema.rooms.optional(),
     })
         .min(1)
         .messages({
             "object.min": "Envie pelo menos um campo para atualização."
-        })
+        }),
 };
+    

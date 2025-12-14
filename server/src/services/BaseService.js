@@ -24,7 +24,8 @@ export default class BaseService {
         if (!id) throw new ValidationError("ID é obrigatório");
         try {
             const item = await this.model.findById(id);
-            if (!item) throw new NotFoundError("Registro não encontrado");
+            // retornando "esse {modelo} não foi encontrado" como NotFoundError
+            if (!item) throw new NotFoundError(this.model.modelName + " não encontrado");
             return item;
         } catch (err) {
             if (err.name === "CastError") throw new ValidationError("ID inválido");

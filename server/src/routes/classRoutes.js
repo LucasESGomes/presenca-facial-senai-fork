@@ -1,23 +1,126 @@
-import express from 'express';
-import classController from '../controllers/classController.js'
-import { validateRequest } from '../middlewares/validateRequest.js';
-import { classSchemas } from '../validations/classValidation.js';
-import { authenticateJWT } from '../middlewares/authMiddleware.js';
+import express from "express";
+import classController from "../controllers/classController.js";
+import { validateRequest } from "../middlewares/validateRequest.js";
+import { classSchemas } from "../validations/classValidation.js";
+import { authenticateJWT } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post('/', authenticateJWT("coordenador"), validateRequest(classSchemas.create), classController.create);
-router.post('/:id/teachers/:teacherId', authenticateJWT("coordenador"), classController.addTeacher);
+/**
+ * =========================
+ * TURMAS
+ * =========================
+ */
 
-router.get('/', authenticateJWT("coordenador"), classController.getAll);
-router.get('/name/:name', authenticateJWT(), classController.getByName);
-router.get('/:id/students', authenticateJWT(), classController.getStudents);
-router.get('/:id/teachers', authenticateJWT(), classController.getTeachers);
-router.get('/:id', authenticateJWT(), classController.getById);
+// Criar turma
+router.post(
+    "/",
+    authenticateJWT("coordenador"),
+    validateRequest(classSchemas.create),
+    classController.create
+);
 
-router.delete('/:id/teachers/:teacherId', authenticateJWT("coordenador"), classController.removeTeacher);
-router.delete('/:id', authenticateJWT("coordenador"), classController.delete);
+// Listar todas as turmas
+router.get(
+    "/",
+    authenticateJWT("coordenador"),
+    classController.getAll
+);
 
-router.patch('/:id', authenticateJWT("coordenador"), validateRequest(classSchemas.update), classController.update);
+// Buscar turma pelo código (ex: I2P4)
+router.get(
+    "/name/:name",
+    authenticateJWT(),
+    classController.getByName
+);
+
+// Buscar turma por ID
+router.get(
+    "/:id",
+    authenticateJWT(),
+    classController.getById
+);
+
+// Atualizar turma
+router.patch(
+    "/:id",
+    authenticateJWT("coordenador"),
+    validateRequest(classSchemas.update),
+    classController.update
+);
+
+// Deletar turma
+router.delete(
+    "/:id",
+    authenticateJWT("coordenador"),
+    classController.delete
+);
+
+/**
+ * =========================
+ * PROFESSORES DA TURMA
+ * =========================
+ */
+
+// Listar professores da turma
+router.get(
+    "/:id/teachers",
+    authenticateJWT(),
+    classController.getTeachers
+);
+
+// Adicionar professor à turma
+router.post(
+    "/:id/teachers/:teacherId",
+    authenticateJWT("coordenador"),
+    classController.addTeacher
+);
+
+// Remover professor da turma
+router.delete(
+    "/:id/teachers/:teacherId",
+    authenticateJWT("coordenador"),
+    classController.removeTeacher
+);
+
+/**
+ * =========================
+ * SALAS (ROOMS) DA TURMA
+ * =========================
+ */
+
+// Listar salas associadas à turma
+router.get(
+    "/:id/rooms",
+    authenticateJWT(),
+    classController.getRooms
+);
+
+// Associar sala à turma
+router.post(
+    "/:id/rooms/:roomId",
+    authenticateJWT("coordenador"),
+    classController.addRoom
+);
+
+// Remover sala da turma
+router.delete(
+    "/:id/rooms/:roomId",
+    authenticateJWT("coordenador"),
+    classController.removeRoom
+);
+
+/**
+ * =========================
+ * ALUNOS DA TURMA
+ * =========================
+ */
+
+// Listar alunos da turma
+router.get(
+    "/:id/students",
+    authenticateJWT(),
+    classController.getStudents
+);
 
 export default router;

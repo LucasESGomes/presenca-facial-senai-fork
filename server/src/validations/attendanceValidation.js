@@ -12,17 +12,17 @@ export const attendanceSchemas = {
 
     // Presença via reconhecimento facial
     markByFace: Joi.object({
-        facialId: Joi.string()
+        userId: Joi.string()
             .min(3)
             .required()
             .messages({
-                "string.base": "O facialId deve ser um texto.",
-                "string.empty": "O facialId é obrigatório.",
+                "string.base": "O userId deve ser um texto.",
+                "string.empty": "O userId é obrigatório.",
                 "string.min": "O facialId deve ter no mínimo {#limit} caracteres."
             }),
 
-        sessionId: objectId.required().messages({
-            "any.required": "O ID da sessão é obrigatório para registrar presença."
+        roomId: objectId.required().messages({
+            "any.required": "O ID da sala é obrigatório para registrar presença."
         })
     }),
 

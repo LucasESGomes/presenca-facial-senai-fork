@@ -28,6 +28,14 @@ const classSchema = new mongoose.Schema(
                 ref: "User", // referência ao model User
             },
         ],
+
+        // Salas físicas possíveis para essa turma
+        rooms: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Room",
+            },
+        ],
     },
     { timestamps: true }
 );

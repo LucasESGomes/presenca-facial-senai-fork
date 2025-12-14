@@ -86,6 +86,10 @@ class StudentController {
         );
     });
 
+    loadAllForFacialAPI = controllerWrapper(async (req, res) => {
+        const students = await StudentService.loadAllFacesData();
+        return ApiResponse.OK(res, "", students);
+    });
 }
 
 export default new StudentController();

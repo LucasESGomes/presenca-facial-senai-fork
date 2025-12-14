@@ -2,7 +2,7 @@ import express from "express";
 import studentController from "../controllers/studentController.js";
 import { validateRequest } from "../middlewares/validateRequest.js";
 import { studentSchemas } from "../validations/studentValidation.js";
-
+import facialApiAuth from "../middlewares/facialApiAuth.js";
 import { authenticateJWT } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -11,7 +11,7 @@ router.post("/", authenticateJWT(), validateRequest(studentSchemas.create), stud
 router.post("/:id/classes/:classCode", authenticateJWT(), studentController.addClass);
 
 router.get("/", authenticateJWT(), studentController.getAll);
-
+router.get("/faces", facialApiAuth, studentController.loadAllForFacialAPI);
 router.get("/:id", authenticateJWT(), studentController.getById);
 router.get("/class/:classCode", authenticateJWT(), studentController.getByClassCode);
 

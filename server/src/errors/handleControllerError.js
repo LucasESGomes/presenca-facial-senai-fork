@@ -41,7 +41,8 @@ export default function handleControllerError(err, res) {
     if (err instanceof AppError) {
         return ApiResponse.ERROR(res, err.message);
     }
-
-    // Caso o erro não seja identificado
-    return ApiResponse.ERROR(res, "Erro interno do servidor");
+    else{
+        // Caso o erro não seja identificado
+        return ApiResponse.ERROR(res, "Erro interno do servidor");
+    }
 }

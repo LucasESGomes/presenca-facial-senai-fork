@@ -6,45 +6,91 @@ import ClassService from "../services/ClassService.js";
 
 const attendanceController = {
 
-    // --- REGISTRO DE PRESENÇA ---
-
+    /**
+     * =========================================================
+     * REGISTRO POR TOTEM (RECONHECIMENTO FACIAL)
+     * =========================================================
+     */
     markByFace: controllerWrapper(async (req, res) => {
-        const { facialId, sessionId } = req.body;
-        const attendance = await AttendanceService.markPresenceByFace(facialId, sessionId);
+        const { userId, roomId } = req.body;
 
-        return ApiResponse.CREATED(res, "Presença registrada.", attendance);
+        if (!userId || !roomId) {
+            return ApiResponse.BAD_REQUEST(
+                res,
+                "userId e roomId são obrigatórios."
+            );
+        }
+
+        const result = await AttendanceService.markPresenceByFace({
+            userId,
+            roomId,
+        });
+
+        // Resposta diferente para pré-attendance
+        if (result.type === "pre_attendance") {
+            return ApiResponse.OK(
+                res,
+                result.message,
+                result
+            );
+        }
+
+        return ApiResponse.CREATED(
+            res,
+            "Presença registrada com sucesso.",
+            result
+        );
     }),
 
+    /**
+     * =========================================================
+     * REGISTRO MANUAL (Professor / Coordenador)
+     * =========================================================
+     */
     markManual: controllerWrapper(async (req, res) => {
         const { classSessionId, studentId, status } = req.body;
 
         const session = await ClassSessionService.getById(classSessionId);
-        console.log(session);
+        if (!session)
+            return ApiResponse.NOT_FOUND(res, "Sessão não encontrada.");
+
+        // Se não for coordenador, valida vínculo do professor
         if (req.user.role !== "coordenador") {
-            const teachers = await ClassService.getTeachers(session.classId);
+            const teachers = await ClassService.getTeachers(session.class);
             const isTeacherFromClass = teachers?.some(
-                (t) => t?._id.toString() === req.user.id.toString()
+                t => t._id.toString() === req.user.id.toString()
             );
 
-            if (!isTeacherFromClass)
-                return ApiResponse.FORBIDDEN(res, "Você não pode registrar presenças nesta turma.");
+            if (!isTeacherFromClass) {
+                return ApiResponse.FORBIDDEN(
+                    res,
+                    "Você não pode registrar presenças nesta turma."
+                );
+            }
         }
 
         const attendance = await AttendanceService.markPresenceManual({
             sessionId: classSessionId,
             studentId,
             status,
-            recordedBy: req.user.id
+            recordedBy: req.user.id,
         });
 
-        return ApiResponse.CREATED(res, "Presença registrada.", attendance);
+        return ApiResponse.CREATED(
+            res,
+            "Presença registrada manualmente.",
+            attendance
+        );
     }),
 
-    // --- CONSULTAS SIMPLES ---
-
+    /**
+     * =========================================================
+     * CONSULTAS
+     * =========================================================
+     */
     getBySession: controllerWrapper(async (req, res) => {
-        const sessionId = req.params.sessionId;
-        const records = await AttendanceService.getAll({ sessionId });
+        const { sessionId } = req.params;
+        const records = await AttendanceService.getBySession(sessionId);
         return ApiResponse.OK(res, "", records);
     }),
 
@@ -54,39 +100,28 @@ const attendanceController = {
         return ApiResponse.OK(res, "", records);
     }),
 
-    getTodayByClass: controllerWrapper(async (req, res) => {
-        const { classCode } = req.params;
-
-        const records = await AttendanceService.getTodayByClass(classCode);
+    getByClass: controllerWrapper(async (req, res) => {
+        const { classId } = req.params;
+        const records = await AttendanceService.getByClass(classId);
         return ApiResponse.OK(res, "", records);
     }),
 
-    getRangeByClass: controllerWrapper(async (req, res) => {
-        const { classCode } = req.params;
-        const { start, end } = req.query;
-
-        const records = await AttendanceService.getRangeByClass(classCode, start, end);
-        return ApiResponse.OK(res, "", records);
-    }),
-
-    // --- RELATÓRIO COMPLETO DA SESSÃO ---
-
+    /**
+     * =========================================================
+     * RELATÓRIO COMPLETO DA SESSÃO
+     * =========================================================
+     */
     getFullReportBySession: controllerWrapper(async (req, res) => {
         const { sessionId } = req.params;
         const report = await AttendanceService.getFullReportBySession(sessionId);
         return ApiResponse.OK(res, "", report);
     }),
 
-    // --- AUSÊNCIAS AUTOMÁTICAS ---
-
-    markAbsencesForSession: controllerWrapper(async (req, res) => {
-        const { sessionId } = req.params;
-        const result = await AttendanceService.markAbsencesForSession(sessionId);
-        return ApiResponse.OK(res, "Ausências geradas.", result);
-    }),
-
-    // --- UPDATE E DELETE ---
-
+    /**
+     * =========================================================
+     * UPDATE / DELETE
+     * =========================================================
+     */
     update: controllerWrapper(async (req, res) => {
         const updated = await AttendanceService.update(req.params.id, req.body);
         return ApiResponse.OK(res, "Presença atualizada.", updated);
@@ -95,7 +130,7 @@ const attendanceController = {
     delete: controllerWrapper(async (req, res) => {
         await AttendanceService.delete(req.params.id);
         return ApiResponse.NO_CONTENT(res, "Registro removido.");
-    })
+    }),
 };
 
 export default attendanceController;

@@ -4,7 +4,7 @@ const studentSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
         registration: { type: String, required: true, unique: true }, // matrícula
-        facialId: { type: String, unique: true },
+        facialId: { type: String, unique: true, select: false },
         classes: [
             {
                 type: String,

@@ -1,18 +1,19 @@
 import ApiResponse from "../utils/ApiResponse.js";
+import TotemService from "../services/TotemService.js";
 
-export default function facialApiAuth(req, res, next) {
-    const key = req.headers["facial-api-key"];
+export default async function facialApiAuth(req, res, next) {
+    const key = req.headers["x-facial-api-key"];
 
     // Se não enviar a chave
     if (!key) {
-        return ApiResponse.FORBIDDEN(res, "Acesso negado. Header 'facial-api-key' ausente.");
+        return ApiResponse.FORBIDDEN(res, "Acesso negado. Header 'x-facial-api-key' ausente.");
     }
 
-    // Se a chave for inválida
-    if (key !== process.env.FACIAL_API_KEY) {
+    const x_facial_key = process.env.FACIAL_API_KEY
+
+    if (key !== x_facial_key) {
         return ApiResponse.FORBIDDEN(res, "Acesso negado. Chave facial-api-key inválida.");
     }
 
-    // Tudo certo
     next();
 }

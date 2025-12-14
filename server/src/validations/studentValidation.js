@@ -22,10 +22,10 @@ const baseSchema = {
         }),
 
     facialId: Joi.string()
-        .min(3)
-        .max(200)
+        .min(128)
+        .max(1000)
         .messages({
-            "string.base": "O facialId deve ser um texto válido.",
+            "string.base": "O facialId deve ser uma string válida.",
             "string.empty": "O facialId não pode estar vazio.",
             "string.min": "O facialId deve ter no mínimo {#limit} caracteres.",
             "string.max": "O facialId deve ter no máximo {#limit} caracteres."

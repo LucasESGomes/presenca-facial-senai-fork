@@ -2,158 +2,232 @@ import BaseService from "./BaseService.js";
 import Attendance from "../models/attendanceModel.js";
 import Student from "../models/studentModel.js";
 import ClassSession from "../models/classSessionModel.js";
-import { NotFoundError, ConflictError, ValidationError } from "../errors/appError.js";
 import ClassService from "./ClassService.js";
+import PreAttendanceService from "./PreAttendanceService.js";
+import { NotFoundError, ConflictError, ValidationError } from "../errors/appError.js";
 
 class AttendanceService extends BaseService {
     constructor() {
         super(Attendance);
     }
 
-    // --- REGISTRO FACIAL ---
-    async markPresenceByFace(facialId, sessionId, classCode) {
-        const session = await ClassSession.findById(sessionId);
-        if (!session) throw new NotFoundError("Sessão não encontrada.");
-        if (session.status === "closed") throw new ConflictError("Sessão fechada.");
-
-        const student = await Student.findOne({ facialId });
+    /**
+     * =========================================================
+     * REGISTRO POR RECONHECIMENTO FACIAL (Totem)
+     * =========================================================
+     */
+    async markPresenceByFace({ userId, roomId }) {
+        const student = await Student.findOne({ _id: userId });
         if (!student) throw new NotFoundError("Aluno não encontrado.");
 
-        // valida se o aluno pertence à turma
-        if (!student.classes.includes(classCode.toUpperCase())) {
-            throw new ConflictError("Aluno não pertence a esta turma.");
+        // Busca sessão ABERTA para essa sala
+        const session = await ClassSession.findOne({
+            room: roomId,
+            status: "open"
+        });
+
+        // 👉 NÃO há sessão aberta → PRE-ATTENDANCE
+        if (!session) {
+            await PreAttendanceService.create({
+                roomId,
+                studentId: student._id
+            });
+
+            return {
+                type: "pre_attendance",
+                message: "Sessão não aberta. Presença armazenada temporariamente."
+            };
         }
 
-        const already = await Attendance.findOne({ sessionId, student: student._id });
-        if (already) throw new ConflictError("Aluno já registrado.");
+        // Sessão aberta → Attendance real
+        // Transformando array de classCodes em array de classIDs
+        let studentClassIds = [];
+        for (const classCode of student.classes) {
+            const foundClass = await ClassService.getByCode(classCode);
+            if (foundClass ) {
+                studentClassIds.push(foundClass._id.toString());
+            }}
+
+        if (!studentClassIds.includes(session.class.toString())) {
+            throw new ConflictError("Aluno não pertence à turma desta sessão.");
+        }
+
+        const alreadyExists = await Attendance.findOne({
+            session: session._id,
+            student: student._id,
+        });
+
+        if (alreadyExists)
+            throw new ConflictError("Presença já registrada.");
 
         return Attendance.create({
-            sessionId,
+            session: session._id,
+            class: session.class,
             student: student._id,
-            classCode: classCode.toUpperCase(),
             status: "presente",
             checkInTime: new Date(),
-            method: "facial",
-            viaFacial: true
+            recordedBy: null,
         });
     }
 
-    // --- REGISTRO MANUAL ---
-    async markPresenceManual({ sessionId, studentId, status, recordedBy, classCode }) {
-
-        if (!["presente", "atrasado", "ausente"].includes(status))
+    /**
+     * =========================================================
+     * REGISTRO MANUAL (Professor / Coordenador)
+     * =========================================================
+     */
+    async markPresenceManual({
+        sessionId,
+        studentId,
+        status,
+        recordedBy,
+    }) {
+        if (!["presente", "atrasado", "ausente"].includes(status)) {
             throw new ValidationError("Status inválido.");
+        }
 
         const session = await ClassSession.findById(sessionId);
         if (!session) throw new NotFoundError("Sessão não encontrada.");
-        if (session.status === "closed") throw new ConflictError("Sessão fechada.");
+        if (session.status === "closed")
+            throw new ConflictError("Sessão fechada.");
 
         const student = await Student.findById(studentId);
         if (!student) throw new NotFoundError("Aluno não encontrado.");
 
-        // valida turma
-        if (!student.classes.includes(classCode.toUpperCase())) {
-            throw new ConflictError("Aluno não pertence a esta turma.");
+        // valida vínculo com a turma
+        if (!student.classes.includes(session.class.toString())) {
+            throw new ConflictError("Aluno não pertence à turma desta sessão.");
         }
 
-        const already = await Attendance.findOne({ sessionId, student: studentId });
-        if (already) throw new ConflictError("Aluno já registrado.");
+        const alreadyExists = await Attendance.findOne({
+            session: session._id,
+            student: student._id,
+        });
+
+        if (alreadyExists)
+            throw new ConflictError("Presença já registrada para este aluno.");
 
         return Attendance.create({
-            sessionId,
-            student: studentId,
-            classCode: classCode.toUpperCase(),
+            session: session._id,
+            class: session.class,
+            student: student._id,
             status,
             checkInTime: status !== "ausente" ? new Date() : null,
             recordedBy,
-            method: "manual",
-            viaFacial: false
         });
     }
 
-    // --- CONSULTAS ---
-    async getTodayByClass(classCode) {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
+    /**
+     * =========================================================
+     * CONSULTAS
+     * =========================================================
+     */
 
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-
-        return Attendance.find({
-            classCode: classCode.toUpperCase(),
-            date: { $gte: start, $lte: end }
-        });
+    async getBySession(sessionId) {
+        return Attendance.find({ session: sessionId })
+            .populate("student", "name registration")
+            .populate("recordedBy", "name role");
     }
 
-    async getRangeByClass(classCode, start, end) {
-        return Attendance.find({
-            classCode: classCode.toUpperCase(),
-            date: { $gte: new Date(start), $lte: new Date(end) }
-        });
+    async getByClass(classId) {
+        return Attendance.find({ class: classId })
+            .populate("student", "name registration")
+            .populate("session", "date status");
     }
 
-    // --- RELATÓRIO ---
+    /**
+     * =========================================================
+     * RELATÓRIO COMPLETO DA SESSÃO
+     * =========================================================
+     */
     async getFullReportBySession(sessionId) {
         const session = await ClassSession.findById(sessionId);
         if (!session) throw new NotFoundError("Sessão não encontrada.");
 
-        const classObj = await ClassService.getById(session.classId);
-        if (!classObj) throw new NotFoundError("Turma da sessão não encontrada.");
-
-        // agora busca por "classes" no array
         const students = await Student.find({
-            classes: classObj.code.toUpperCase()
+            classes: session.class,
         });
 
-        const attendances = await Attendance.find({ sessionId });
+        const attendances = await Attendance.find({
+            session: session._id,
+        });
 
-        const presentIds = attendances.map(a => a.student.toString());
+        const presentIds = new Set(
+            attendances.map(a => a.student.toString())
+        );
 
         const absentees = students.filter(
-            s => !presentIds.includes(s._id.toString())
+            s => !presentIds.has(s._id.toString())
         );
 
         return {
             session,
             presentes: attendances,
-            ausentes: absentees
+            ausentes: absentees,
         };
     }
 
-    // --- AUSÊNCIAS AUTOMÁTICAS ---
-    async markAbsencesForSession(sessionId) {
+    /**
+     * =========================================================
+     * CONSOME PRE ATTENDANCES
+     * =========================================================
+     */
+    async consumePreAttendances(sessionId) {
         const session = await ClassSession.findById(sessionId);
         if (!session) throw new NotFoundError("Sessão não encontrada.");
+        console.log("Consuming pre-attendances for session:", sessionId);
 
-        // Procurando a classe com base no id da sessão, para obter o classCode.
-        const classObj = await ClassService.getById(session.classId);
-        if (!classObj) throw new NotFoundError("Turma da sessão não encontrada.");
+        const preAttendances = await PreAttendanceService.getByRoom(session.room.toString());
+
+        console.log(`Found ${preAttendances.length} pre-attendances for room ${session.room.toString()}`);
 
 
-        const students = await Student.find({
-            classes: classObj.code.toUpperCase()
-        });
+        if (!preAttendances.length) return { created: 0 };
 
-        const existing = await Attendance.find({ sessionId });
+        let created = 0;
 
-        const registered = new Set(existing.map(a => a.student.toString()));
+        for (const pre of preAttendances) {
+            const student = await Student.findById(pre.studentId);
+            if (!student) continue;
+            console.log("Processing pre-attendance for student:", student._id.toString());
 
-        const toCreate = students
-            .filter(s => !registered.has(s._id.toString()))
-            .map(s => ({
-                sessionId,
-                student: s._id,
-                classCode: classObj.code.toUpperCase(),
-                status: "ausente",
-                date: new Date(),
-                method: "manual",
-                viaFacial: false
-            }));
+            // valida vínculo com a turma
 
-        if (toCreate.length) await Attendance.insertMany(toCreate);
+            // Transformando array de classCodes em array de classIDs
+            let studentClassIds = [];
+            for (const classCode of student.classes) {
+                const foundClass = await ClassService.getByCode(classCode);
+                if (foundClass) {
+                    studentClassIds.push(foundClass._id.toString());
+                }
+            }
 
-        return { created: toCreate.length };
+            if (!studentClassIds.includes(session.class.toString())) continue;
+            console.log("Student belongs to class:", session.class.toString());
+            const exists = await Attendance.findOne({
+                session: session._id,
+                student: student._id
+            });
+
+            if (exists) continue;
+            console.log("Creating attendance record for student:", student._id.toString());
+            await Attendance.create({
+                session: session._id,
+                class: session.class,
+                student: student._id,
+                status: "presente",
+                checkInTime: new Date(pre.timestamp),
+                recordedBy: null
+            });
+
+            created++;
+        }
+
+        // limpa os pré-attendances da sala
+        await PreAttendanceService.clearRoom(session.room.toString());
+
+        return { created };
     }
+
 }
 
 export default new AttendanceService();

@@ -6,7 +6,10 @@ import { classSessionSchemas } from "../validations/classSessionValidation.js";
 
 const router = express.Router();
 
-// Criar sessão (professor ou coordenador)
+/**
+ * Criar sessão de aula
+ * Professor ou coordenador (teacherId vem do JWT)
+ */
 router.post(
     "/",
     authenticateJWT(),
@@ -14,28 +17,36 @@ router.post(
     classSessionController.create
 );
 
-// Buscar todas as sessões de uma turma
+/**
+ * Buscar todas as sessões de uma turma
+ */
 router.get(
     "/class/:classId",
     authenticateJWT(),
     classSessionController.getByClass
 );
 
-// Buscar todas as sessões de um professor
+/**
+ * Buscar todas as sessões de um professor
+ */
 router.get(
     "/teacher/:teacherId",
     authenticateJWT(),
     classSessionController.getByTeacher
 );
 
-// Buscar sessão por ID
+/**
+ * Buscar sessão por ID
+ */
 router.get(
     "/:id",
     authenticateJWT(),
     classSessionController.getById
 );
 
-// Atualizar sessão
+/**
+ * Atualizar dados básicos da sessão
+ */
 router.patch(
     "/:id",
     authenticateJWT(),
@@ -43,21 +54,18 @@ router.patch(
     classSessionController.update
 );
 
-// Fechar sessão
+/**
+ * Fechar sessão
+ */
 router.patch(
     "/:id/close",
     authenticateJWT(),
     classSessionController.closeSession
 );
 
-// Resetar sessão (limpar attendances)
-router.delete(
-    "/:id/reset",
-    authenticateJWT(),
-    classSessionController.resetSession
-);
-
-// Deletar sessão por completo
+/**
+ * Deletar sessão por completo
+ */
 router.delete(
     "/:id",
     authenticateJWT(),

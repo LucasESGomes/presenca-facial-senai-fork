@@ -12,8 +12,7 @@ class ClassService extends BaseService {
     }
 
     /**
-     * Cria uma nova turma com validações de código duplicado.
-     * @param {Object} data - Dados da turma
+     * Cria uma nova turma com validação de código duplicado
      */
     async create(data) {
         if (!data.code)
@@ -27,23 +26,25 @@ class ClassService extends BaseService {
     }
 
     /**
-     * Busca turma pelo código (ex: 'I2P4')
-     * @param {string} code - Código da turma
+     * Busca turma pelo código (ex: I2P4)
      */
     async getByCode(code) {
-        console.log("Buscando turma pelo código:", code);
-        if (!code) throw new ValidationError("O código da turma é obrigatório.");
-        const classData = await this.model.findOne({ code: code }).populate("teachers", "name role isActive");
-        
+        if (!code)
+            throw new ValidationError("O código da turma é obrigatório.");
+
+        const classData = await this.model
+            .findOne({ code })
+            .populate("teachers", "name role isActive")
+            .populate("rooms", "name location isActive");
+
         if (!classData)
             throw new NotFoundError("Turma não encontrada.");
+
         return classData;
     }
 
     /**
-     * Atualiza dados da turma.
-     * @param {string} id - ID da turma
-     * @param {Object} updateData - Dados para atualização
+     * Atualiza dados da turma
      */
     async updateClass(id, updateData) {
         if (updateData.code) {
@@ -59,18 +60,23 @@ class ClassService extends BaseService {
     }
 
     /**
-     * Lista todas as turmas com professores populados
+     * Lista todas as turmas com professores e salas
      */
     async getAll() {
-        return this.model.find().populate("teachers", "name role isActive");
+        return this.model
+            .find()
+            .populate("teachers", "name role isActive")
+            .populate("rooms", "name location isActive");
     }
 
-    /**
-     * Define os professores de uma turma (substitui o array inteiro)
-     */
+    /* ==========================
+       PROFESSORES
+    ========================== */
+
     async setTeachers(classId, teacherIds) {
         const classData = await this.model.findById(classId);
-        if (!classData) throw new NotFoundError("Turma não encontrada.");
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
 
         classData.teachers = teacherIds;
         await classData.save();
@@ -78,12 +84,10 @@ class ClassService extends BaseService {
         return classData.populate("teachers", "name role isActive");
     }
 
-    /**
-     * Adiciona um professor à turma
-     */
     async addTeacher(classId, teacherId) {
         const classData = await this.model.findById(classId);
-        if (!classData) throw new NotFoundError("Turma não encontrada.");
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
 
         if (!classData.teachers.includes(teacherId)) {
             classData.teachers.push(teacherId);
@@ -93,12 +97,10 @@ class ClassService extends BaseService {
         return classData.populate("teachers", "name role isActive");
     }
 
-    /**
-     * Remove um professor da turma
-     */
     async removeTeacher(classId, teacherId) {
         const classData = await this.model.findById(classId);
-        if (!classData) throw new NotFoundError("Turma não encontrada.");
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
 
         classData.teachers = classData.teachers.filter(
             (id) => id.toString() !== teacherId.toString()
@@ -108,15 +110,67 @@ class ClassService extends BaseService {
         return classData.populate("teachers", "name role isActive");
     }
 
+    /* ==========================
+       SALAS (ROOMS)
+    ========================== */
+
+    async setRooms(classId, roomIds) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        classData.rooms = roomIds;
+        await classData.save();
+
+        return classData.populate("rooms", "name location isActive");
+    }
+
+    async addRoom(classId, roomId) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        if (!classData.rooms.includes(roomId)) {
+            classData.rooms.push(roomId);
+            await classData.save();
+        }
+
+        return classData.populate("rooms", "name location isActive");
+    }
+
+    async removeRoom(classId, roomId) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        classData.rooms = classData.rooms.filter(
+            (id) => id.toString() !== roomId.toString()
+        );
+
+        await classData.save();
+        return classData.populate("rooms", "name location isActive");
+    }
+
+    /**
+     * Retorna professores da turma
+     */
     async getTeachers(id) {
-        if (!id) throw new ValidationError("Código da turma é obrigatório");
+        if (!id)
+            throw new ValidationError("ID da turma é obrigatório");
+
         try {
-            const classData = await this.model.findOne({ _id: id }).populate("teachers", "name role isActive email");
-            if (!classData) throw new NotFoundError("Essa turma não possui professores.");
+            const classData = await this.model
+                .findById(id)
+                .populate("teachers", "name role isActive email");
+
+            if (!classData)
+                throw new NotFoundError("Turma não encontrada.");
+
             return classData;
         } catch (err) {
-            if (err.name === "CastError") throw new ValidationError("ID inválido");
-            else throw err;
+            if (err.name === "CastError")
+                throw new ValidationError("ID inválido");
+            throw err;
         }
     }
 }
