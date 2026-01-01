@@ -1,6 +1,7 @@
 import BaseService from "./BaseService.js";
 import User from "../models/userModel.js";
 import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "../errors/appError.js";
+import AccessRequestService from "./AccessRequestService.js";
 import bcrypt from "bcrypt";
 
 class UserService extends BaseService {

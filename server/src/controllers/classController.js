@@ -43,6 +43,12 @@ const classController = {
        PROFESSORES
     ========================== */
 
+    getClassesByTeacher: controllerWrapper(async (req, res) => {
+        const teacherId = req.user.id;
+        const classes = await ClassService.getClassesByTeacher(teacherId);
+        return ApiResponse.OK(res, "", classes);
+    }),
+
     getTeachers: controllerWrapper(async (req, res) => {
         const id = req.params.id;
         const classData = await ClassService.getTeachers(id);

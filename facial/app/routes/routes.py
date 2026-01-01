@@ -18,8 +18,6 @@ router = APIRouter()
 # =========================================================
 # 🔐 GERAR EMBEDDING FACIAL (CADASTRO DE ALUNO)
 # =========================================================
-# - Uso interno (API principal)
-# - Protegido por x-facial-api-key
 # - Recebe uma imagem
 # - Retorna embedding em base64
 # =========================================================
@@ -29,7 +27,6 @@ router = APIRouter()
 )
 async def encode_face(
     image: UploadFile = File(...),
-    _: None = Depends(verify_api_key)
 ):
     try:
         file_bytes = await image.read()

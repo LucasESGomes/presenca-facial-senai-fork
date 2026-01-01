@@ -73,6 +73,13 @@ class ClassService extends BaseService {
        PROFESSORES
     ========================== */
 
+    async getClassesByTeacher(teacherId) {
+        return this.model
+            .find({ teachers: teacherId })
+            .populate("teachers", "name role isActive")
+            .populate("rooms", "name location isActive");
+    }
+
     async setTeachers(classId, teacherIds) {
         const classData = await this.model.findById(classId);
         if (!classData)

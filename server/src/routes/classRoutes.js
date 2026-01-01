@@ -34,6 +34,13 @@ router.get(
     classController.getByName
 );
 
+// Buscar as turmas que um professor leciona (JWT)
+router.get(
+    "/my",
+    authenticateJWT(),
+    classController.getClassesByTeacher
+);
+
 // Buscar turma por ID
 router.get(
     "/:id",

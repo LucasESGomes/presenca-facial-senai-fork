@@ -69,7 +69,8 @@ const userController = {
         const deletedUser = await UserService.delete(id);
 
         return ApiResponse.NO_CONTENT(res, "Usuário deletado com sucesso.")
-    })
+    }),
+
 };
 
 export default userController;

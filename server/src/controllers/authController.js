@@ -15,7 +15,9 @@ const authController = {
                     role: foundUser.role
                 })
 
-                return ApiResponse.OK(res, "", JwtToken)
+
+
+                return ApiResponse.OK(res, "", {token: JwtToken, user: foundUser})
             } else {
                 return ApiResponse.UNAUTHORIZED(res, "Credenciais inválidas")
             }
