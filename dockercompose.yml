@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  client:
+    build: ./client
+    container_name: presenca_client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  server:
+    build: ./server
+    container_name: presenca_server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    env_file:
+      - ./server/.env
+    depends_on:
+      - redis
+      - facial
+    restart: unless-stopped
+
+  facial:
+    build: ./facial
+    container_name: presenca_facial
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./facial/.env
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: presenca_redis
+    restart: unless-stopped
