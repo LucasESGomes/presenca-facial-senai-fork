@@ -16,6 +16,7 @@ def base64_to_embedding(base64_str: str) -> np.ndarray:
 
 
 async def sync_students():
+    print("🔄 Sincronizando estudantes com a API principal...")
     url = f"{MAIN_API_URL}/students/faces"
 
     async with httpx.AsyncClient(timeout=10) as client:

@@ -56,8 +56,7 @@ const userController = {
     }),
 
     updateUser: controllerWrapper(async (req, res) =>{
-        const id = req.user.id;
-
+        const id = req.params.id;
         const updatedUser = await UserService.update(id, req.body);
 
         return ApiResponse.OK(res, "Usuário atualizado com sucesso.", updatedUser);
