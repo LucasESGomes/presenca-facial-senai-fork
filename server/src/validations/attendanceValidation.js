@@ -19,11 +19,7 @@ export const attendanceSchemas = {
                 "string.base": "O userId deve ser um texto.",
                 "string.empty": "O userId é obrigatório.",
                 "string.min": "O facialId deve ter no mínimo {#limit} caracteres."
-            }),
-
-        roomId: objectId.required().messages({
-            "any.required": "O ID da sala é obrigatório para registrar presença."
-        })
+            })
     }),
 
     // Presença manual

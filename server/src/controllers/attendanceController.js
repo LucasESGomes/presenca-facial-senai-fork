@@ -26,9 +26,9 @@ const attendanceController = {
         upload.single('image'),
         controllerWrapper(async (req, res) => {
             const facialApiUrl = process.env.FACIAL_API_URL || "http://localhost:8000";
-            const facialApiKey = process.env.FACIAL_API_KEY || "your-api-key-here";
+            const facialApiKey = process.env.FACIAL_API_KEY || "";
 
-            const { room } = req.body;
+            const { room } = req.totem.room;
 
             if (!req.file) {
                 return ApiResponse.BADREQUEST(res, "Imagem é obrigatória.");
