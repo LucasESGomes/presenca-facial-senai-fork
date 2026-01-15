@@ -56,8 +56,13 @@ const userController = {
     }),
 
     updateUser: controllerWrapper(async (req, res) =>{
-        const id = req.user.id;
+        const id = req.params.id;
+        const user = req.user.id;
 
+        // Apenas administradores ou o próprio usuário podem atualizar
+        if (user !== id && req.user.role !== "coordenador"){
+            return ApiResponse.FORBIDDEN(res, "Você não tem permissão para atualizar este usuário.");
+        } 
         const updatedUser = await UserService.update(id, req.body);
 
         return ApiResponse.OK(res, "Usuário atualizado com sucesso.", updatedUser);
