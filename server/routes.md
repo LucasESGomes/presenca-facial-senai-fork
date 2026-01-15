@@ -12,6 +12,7 @@
 - [Salas (Rooms)](#salas-rooms)
 - [Totens (Totems)](#totens-totems)
 - [Presença (Attendance)](#presença-attendance)
+- [Pedidos de acesso (Access Requests)](#requisições-de-acesso-access-requests)
 
 ---
 
@@ -2183,6 +2184,289 @@ Deletar presença.
 
 ---
 
+## Requisições de Acesso (Access Requests)
+
+### POST /api/access-requests
+
+Criar nova requisição de acesso ao sistema.
+
+**Autenticação:** Nenhuma
+
+**Request Body:**
+```json
+{
+  "name": "José Edson",
+  "cpf": "111.222.333-44",
+  "email": "edson@gmail.com",
+  "password": "edson123",
+  "role": "coordenador"
+}
+```
+
+**Validação:**
+- `name`: string, 3-100 caracteres (obrigatório)
+- `cpf`: string, formato válido de CPF com ou sem pontuação (obrigatório, único)
+- `email`: email válido (obrigatório, único)
+- `password`: string, 6-50 caracteres (obrigatório)
+- `role`: "professor" ou "coordenador" (obrigatório)
+
+**Resposta (201 Created):**
+```json
+{
+  "success": true,
+  "status": 201,
+  "message": "Requisição de acesso criada com sucesso.",
+  "data": {
+    "_id": "696954181aa61dd5e8c26f4b",
+    "name": "José Edson",
+    "cpf": "111.222.333-44",
+    "email": "edson@gmail.com",
+    "role": "coordenador",
+    "status": "pending",
+    "createdAt": "2026-01-15T20:54:48.680Z",
+    "updatedAt": "2026-01-15T20:54:48.680Z"
+  }
+}
+```
+
+**Possíveis Erros:**
+- `400 Bad Request` - Dados inválidos ou campos faltando
+- `409 Conflict` - CPF ou email já cadastrado
+
+---
+
+### GET /api/access-requests
+
+Listar todas as requisições de acesso.
+
+**Autenticação:** JWT - Role: `coordenador`
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "message": "",
+  "data": [
+    {
+      "_id": "696954181aa61dd5e8c26f4b",
+      "name": "José Edson",
+      "cpf": "111.222.333-44",
+      "email": "edson@gmail.com",
+      "role": "coordenador",
+      "status": "pending",
+      "createdAt": "2026-01-15T20:54:48.680Z",
+      "updatedAt": "2026-01-15T20:54:48.680Z"
+    },
+    {
+      "_id": "696954281aa61dd5e8c26f4c",
+      "name": "Maria Silva",
+      "cpf": "222.333.444-55",
+      "email": "maria@gmail.com",
+      "role": "professor",
+      "status": "approved",
+      "createdAt": "2026-01-15T21:00:00.000Z",
+      "updatedAt": "2026-01-15T21:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/access-requests/:id
+
+Obter requisição de acesso por ID.
+
+**Autenticação:** JWT - Role: `coordenador`
+
+**Parâmetros:**
+- `id` - ObjectId da requisição
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "_id": "696954181aa61dd5e8c26f4b",
+    "name": "José Edson",
+    "cpf": "111.222.333-44",
+    "email": "edson@gmail.com",
+    "role": "coordenador",
+    "status": "pending",
+    "createdAt": "2026-01-15T20:54:48.680Z",
+    "updatedAt": "2026-01-15T20:54:48.680Z"
+  }
+}
+```
+
+**Possíveis Erros:**
+- `404 Not Found` - Requisição não encontrada
+
+---
+
+### GET /api/access-requests/cpf/:cpf
+
+Buscar requisição de acesso por CPF.
+
+**Autenticação:** JWT - Role: `coordenador`
+
+**Parâmetros:**
+- `cpf` - CPF do solicitante (pode conter ou não pontuação)
+
+**Exemplos de URLs válidas:**
+- `/api/access-requests/cpf/111.222.333-44`
+- `/api/access-requests/cpf/11122233344`
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "_id": "696954181aa61dd5e8c26f4b",
+    "name": "José Edson",
+    "cpf": "111.222.333-44",
+    "email": "edson@gmail.com",
+    "role": "coordenador",
+    "status": "pending",
+    "createdAt": "2026-01-15T20:54:48.680Z",
+    "updatedAt": "2026-01-15T20:54:48.680Z"
+  }
+}
+```
+
+**Possíveis Erros:**
+- `404 Not Found` - Requisição não encontrada para o CPF informado
+
+---
+
+### PATCH /api/access-requests/:id/status
+
+Atualizar status de uma requisição de acesso (aprovar ou rejeitar).
+
+**Autenticação:** JWT - Role: `coordenador`
+
+**Parâmetros:**
+- `id` - ObjectId da requisição
+
+**Request Body:**
+```json
+{
+  "status": "approved"
+}
+```
+
+**Validação:**
+- `status`: "approved" ou "rejected" (obrigatório)
+
+**Comportamento:**
+- **Se aprovado (`approved`)**: Cria automaticamente um usuário no sistema com os dados da requisição e marca a requisição como aprovada
+- **Se rejeitado (`rejected`)**: Apenas atualiza o status da requisição para rejeitado
+
+**Resposta (200 OK - Aprovado):**
+```json
+{
+  "success": true,
+  "message": "Requisição aprovada e usuário criado com sucesso.",
+  "data": {
+    "_id": "696954181aa61dd5e8c26f4b",
+    "name": "José Edson",
+    "cpf": "111.222.333-44",
+    "email": "edson@gmail.com",
+    "role": "coordenador",
+    "status": "approved",
+    "createdAt": "2026-01-15T20:54:48.680Z",
+    "updatedAt": "2026-01-15T21:10:00.000Z"
+  }
+}
+```
+
+**Resposta (200 OK - Rejeitado):**
+```json
+{
+  "success": true,
+  "message": "Requisição rejeitada.",
+  "data": {
+    "_id": "696954181aa61dd5e8c26f4b",
+    "name": "José Edson",
+    "cpf": "111.222.333-44",
+    "email": "edson@gmail.com",
+    "role": "coordenador",
+    "status": "rejected",
+    "createdAt": "2026-01-15T20:54:48.680Z",
+    "updatedAt": "2026-01-15T21:10:00.000Z"
+  }
+}
+```
+
+**Possíveis Erros:**
+- `400 Bad Request` - Status inválido ou requisição já foi processada
+- `404 Not Found` - Requisição não encontrada
+- `409 Conflict` - Usuário com esse email ou CPF já existe (ao aprovar)
+
+---
+
+## Status de Requisições
+
+| Status | Descrição |
+|--------|-----------|
+| `pending` | Aguardando aprovação do coordenador (padrão) |
+| `approved` | Requisição aprovada e usuário criado |
+| `rejected` | Requisição rejeitada pelo coordenador |
+
+---
+
+## Fluxo de Requisição de Acesso
+
+### 1. Usuário Solicita Acesso
+```bash
+POST /api/access-requests
+{
+  "name": "José Edson",
+  "cpf": "111.222.333-44",
+  "email": "edson@gmail.com",
+  "password": "edson123",
+  "role": "professor"
+}
+```
+
+### 2. Coordenador Lista Requisições Pendentes
+```bash
+GET /api/access-requests
+Authorization: Bearer <token>
+```
+
+### 3. Coordenador Aprova ou Rejeita
+```bash
+PATCH /api/access-requests/:id/status
+Authorization: Bearer <token>
+{
+  "status": "approved"
+}
+```
+
+### 4. (Se aprovado) Usuário Pode Fazer Login
+```bash
+POST /api/auth/login
+{
+  "email": "edson@gmail.com",
+  "password": "edson123"
+}
+```
+
+---
+
+## Notas Importantes
+
+- ✅ A rota de criar requisição **não requer autenticação** (acesso público)
+- ✅ Todas as outras rotas **exigem JWT com role `coordenador`**
+- ✅ O CPF deve ser único no sistema (validado)
+- ✅ O email deve ser único no sistema (validado)
+- ✅ Ao aprovar, o sistema cria automaticamente um usuário com os dados da requisição
+- ✅ A senha é armazenada com hash para segurança
+- ✅ Uma requisição só pode ser aprovada/rejeitada uma vez (status é imutável após mudança)
+
 ## Dicas de Segurança
 
 - ✅ Sempre envie o token JWT no header de Autorização
@@ -2190,9 +2474,6 @@ Deletar presença.
 - ✅ Altere as senhas padrão
 - ✅ Guarde a `apiKey` do totem com segurança
 - ✅ Regenere a chave do totem se for comprometida
-- ✅ Implemente rate limiting no frontend
-- ✅ Valide todos os dados no backend
-
 ---
 
 ## Notas Gerais
