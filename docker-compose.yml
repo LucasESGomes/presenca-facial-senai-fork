@@ -13,6 +13,8 @@ services:
       - ./client/.env
     depends_on:
       - server
+    networks:
+      - presenca_network
     restart: unless-stopped
 
   server:
@@ -27,8 +29,14 @@ services:
       - ./server/.env
     depends_on:
       - redis
-      - facial
+    networks:
+      - presenca_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   facial:
     build: ./facial
@@ -37,9 +45,22 @@ services:
       - "8000:8000"
     env_file:
       - ./facial/.env
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - presenca_network
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: presenca_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - presenca_network
     restart: unless-stopped
+
+networks:
+  presenca_network:
+    driver: bridge

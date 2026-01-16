@@ -27,7 +27,6 @@ router.post(
 router.post(
     "/facial",
     totemApiAuth,
-    validateRequest(attendanceSchemas.markByFace),
     attendanceController.markByFace
 );
 

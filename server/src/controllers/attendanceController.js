@@ -27,9 +27,8 @@ const attendanceController = {
         controllerWrapper(async (req, res) => {
             const facialApiUrl = process.env.FACIAL_API_URL || "http://localhost:8000";
             const facialApiKey = process.env.FACIAL_API_KEY || "";
-
-            const { room } = req.totem.room;
-
+            
+            const room  = req.totem.room.toString();
             if (!req.file) {
                 return ApiResponse.BADREQUEST(res, "Imagem é obrigatória.");
             }
@@ -59,13 +58,12 @@ const attendanceController = {
                             ...formData.getHeaders(),
                             'x-facial-api-key': facialApiKey
                         },
-                        timeout: 15000
+                        timeout: 30000
                     }
                 );
 
-
+                console.log(response)
                 let {studentId}  = response.data;
-                
                 if (!studentId) {
                     return ApiResponse.NOTFOUND(res, "Rosto não reconhecido.");
                 }
