@@ -7,18 +7,69 @@ from fastapi import (
     HTTPException
 )
 
+from app.services.face_service import generate_embedding_from_image
+from app.services.encryption_service import encrypt_embedding
 from app.services.recognition_service import recognize_student
 
 router = APIRouter()
 
+# =========================================================
+# 🔐 GERAR EMBEDDING FACIAL (CADASTRO)
+# =========================================================
+# - Recebe apenas uma imagem
+# - Retorna embedding criptografado + nonce (Base64)
+# =========================================================
+@router.post(
+    "/encode",
+    tags=["encoding"]
+)
+async def encode_face(
+    image: UploadFile = File(...)
+):
+    try:
+        # ===========================
+        # 1️⃣ BYTES DA IMAGEM
+        # ===========================
+        file_bytes = await image.read()
 
+        if not file_bytes:
+            raise ValueError("Imagem vazia")
+
+        # ===========================
+        # 2️⃣ GERAR EMBEDDING
+        # ===========================
+        embedding = generate_embedding_from_image(file_bytes)
+
+        # ===========================
+        # 3️⃣ CRIPTOGRAFAR EMBEDDING
+        # ===========================
+        encrypted = encrypt_embedding(embedding.tolist())
+
+        return {
+            "embedding": encrypted["ciphertext"],
+            "nonce": encrypted["nonce"],
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# =========================================================
+# 🎯 RECONHECER ALUNO PELO ROSTO (TOTEM)
+# =========================================================
+# - Recebe room + candidates + imagem
+# - Faz matching facial em memória
+# =========================================================
 @router.post(
     "/recognize",
     tags=["recognize"]
 )
 async def recognize_face(
     room: str = Form(...),
-    candidates: str = Form(...),  # continua sendo string
+    candidates: str = Form(...),  # JSON string
     image: UploadFile = File(...)
 ):
     print("🔵 Começando recognize_face")
@@ -45,7 +96,6 @@ async def recognize_face(
             raise ValueError("'candidates' deve ser uma lista")
 
         print(f"👥 Candidatos recebidos: {len(candidates_list)}")
-        print(f"🔍 Tipo do primeiro candidato: {type(candidates_list[0])}")
 
         # ===========================
         # 3️⃣ RECONHECIMENTO
