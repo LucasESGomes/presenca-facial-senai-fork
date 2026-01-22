@@ -1,93 +1,102 @@
 import Joi from "joi";
 
+/**
+ * Subschema do embedding facial (opcional, mas rígido)
+ */
+const facialEmbeddingSchema = Joi.object({
+    embedding: Joi.string()
+        .base64()
+        .required()
+        .messages({
+            "string.base": "O embedding criptografado deve ser um texto válido.",
+            "string.base64": "O embedding deve estar em Base64.",
+            "any.required": "O embedding criptografado é obrigatório.",
+        }),
+
+    nonce: Joi.string()
+        .base64()
+        .required()
+        .messages({
+            "string.base": "O nonce deve ser um texto válido.",
+            "string.base64": "O nonce deve estar em Base64.",
+            "any.required": "O nonce é obrigatório.",
+        }),
+})
+    // impede envio de campos extras (ex: key, alg, version)
+    .unknown(false)
+    .messages({
+        "object.unknown": "Campos adicionais não são permitidos no embedding facial.",
+    });
+
+/**
+ * Campos base do aluno
+ */
 const baseSchema = {
     name: Joi.string()
         .min(3)
         .max(100)
+        .required()
         .messages({
-            "string.base": "O nome deve ser um texto válido.",
+            "any.required": "O nome é obrigatório.",
             "string.empty": "O nome não pode estar vazio.",
-            "string.min": "O nome deve ter no mínimo {#limit} caracteres.",
-            "string.max": "O nome deve ter no máximo {#limit} caracteres."
         }),
 
     registration: Joi.string()
         .min(3)
         .max(50)
+        .required()
         .messages({
-            "string.base": "A matrícula deve ser um texto válido.",
+            "any.required": "A matrícula é obrigatória.",
             "string.empty": "A matrícula não pode estar vazia.",
-            "string.min": "A matrícula deve ter no mínimo {#limit} caracteres.",
-            "string.max": "A matrícula deve ter no máximo {#limit} caracteres."
         }),
 
-    facialId: Joi.string()
-        .min(128)
-        .max(1000)
+    classes: Joi.array()
+        .items(
+            Joi.string()
+                .uppercase()
+                .trim()
+                .min(2)
+                .max(20)
+        )
+        .min(1)
+        .required()
         .messages({
-            "string.base": "O facialId deve ser uma string válida.",
-            "string.empty": "O facialId não pode estar vazio.",
-            "string.min": "O facialId deve ter no mínimo {#limit} caracteres.",
-            "string.max": "O facialId deve ter no máximo {#limit} caracteres."
+            "any.required": "Informe ao menos uma turma.",
+            "array.min": "Informe ao menos uma turma.",
         }),
-
-    classCode: Joi.string()
-        .uppercase()
-        .min(2)
-        .max(20)
-        .messages({
-            "string.base": "O código da turma deve ser um texto válido.",
-            "string.empty": "O código da turma não pode estar vazio.",
-            "string.min": "O código da turma deve ter pelo menos {#limit} caracteres.",
-            "string.max": "O código da turma deve ter no máximo {#limit} caracteres.",
-            "string.uppercase": "O código da turma deve estar em letras maiúsculas."
-        })
 };
+
+/**
+ * Schema de criação
+ */
+const studentCreateSchema = Joi.object({
+    name: baseSchema.name,
+    registration: baseSchema.registration,
+    classes: baseSchema.classes,
+
+    // opcional, mas validado se existir
+    facialEmbedding: facialEmbeddingSchema.optional(),
+
+})
+    .messages({
+        "object.unknown": "Campo não permitido no cadastro do aluno.",
+    });
+
+const updateSchema = Joi.object({
+    name: baseSchema.name.optional(),
+    registration: baseSchema.registration.optional(),
+    classes: baseSchema.classes.optional(),
+    facialEmbedding: facialEmbeddingSchema.optional(),
+})
+    .min(1)
+    .messages({
+        "object.min": "Envie ao menos um campo para atualização.",
+        "object.unknown": "Campo não permitido na atualização do aluno.",
+    });
 
 export const studentSchemas = {
-    // Criar aluno
-    create: Joi.object({
-        name: baseSchema.name.required().messages({
-            "any.required": "O nome é obrigatório.",
-            "string.empty": "O nome não pode estar vazio."
-        }),
-
-        registration: baseSchema.registration.required().messages({
-            "any.required": "A matrícula é obrigatória.",
-            "string.empty": "A matrícula não pode estar vazia."
-        }),
-
-        facialId: baseSchema.facialId.required().messages({
-            "any.required": "O facialId é obrigatório.",
-            "string.empty": "O facialId não pode estar vazio."
-        }),
-
-        classCode: baseSchema.classCode.required().messages({
-            "any.required": "O código da turma (classCode) é obrigatório.",
-            "string.empty": "O código da turma não pode estar vazio.",
-            "string.uppercase": "O código da turma deve estar em letras maiúsculas."
-        })
-    }).messages({
-        "object.base": "Dados de aluno inválidos.",
-    }),
-
-    // Atualizar aluno (não pode atualizar matricula nem facialId)
-    update: Joi.object({
-        name: baseSchema.name.optional(),
-        classCode: baseSchema.classCode.optional()
-    })
-        .min(1)
-        .messages({
-            "object.min": "Envie pelo menos um campo para atualização."
-        }),
-
-    // Atualizar somente o facialId
-    updateFacial: Joi.object({
-        facialId: baseSchema.facialId.required().messages({
-            "any.required": "O novo facialId é obrigatório.",
-            "string.empty": "O facialId não pode estar vazio."
-        })
-    }).messages({
-        "object.base": "Dados de atualização facial inválidos."
-    })
-};
+    // 🔹 Criação de aluno
+    create: studentCreateSchema,
+    update: updateSchema,
+    updateFacial: facialEmbeddingSchema,
+}

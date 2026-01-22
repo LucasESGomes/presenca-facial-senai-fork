@@ -18,24 +18,14 @@ class StudentService extends BaseService {
      * Criar aluno
      */
     async create(data) {
-        // Verificar facialId
-        if (!data.facialId) {
-            throw new ValidationError("O aluno precisa ter um ID de reconhecimento facial (facialId).");
-        }
-
-        // Evitar duplicidade do facialId
-        const hasFaceConflict = await this.model.findOne({ facialId: data.facialId });
-        if (hasFaceConflict) {
-            throw new ConflictError("Este facialId já está registrado para outro aluno.");
-        }
-
         // Validar turma pelo código
-        const classExists = await Class.findOne({ code: data.classCode });
-        if (!classExists) {
-            throw new NotFoundError("A turma informada não existe.");
-        }
-        data.classes = [data.classCode];
-        delete data.classCode;
+        data.classes.forEach(async (classCode) => {
+            const classExists = await Class.findOne({ code: classCode });
+            if (!classExists) {
+                throw new NotFoundError(`A turma informada (${classCode}) não existe.`);
+            }
+        });
+
         return super.create(data);
     }
 
@@ -88,17 +78,14 @@ class StudentService extends BaseService {
     /**
      * Atualizar apenas o facialId
      */
-    async updateFaceData(id, newFacialId) {
-        if (!newFacialId) {
-            throw new ValidationError("O novo facialId é obrigatório.");
+    async updateFaceData(id, embedding, nonce) {
+        if (!embedding || !nonce) {
+            throw new ValidationError("O embedding e o nonce são obrigatórios.");
         }
 
-        const conflict = await this.model.findOne({ facialId: newFacialId });
-        if (conflict && conflict._id.toString() !== id.toString()) {
-            throw new ConflictError("Este facialId já está vinculado a outro aluno.");
-        }
+        const newFacialEmbedding = { embedding, nonce };
 
-        return super.update(id, { facialId: newFacialId });
+        return super.update(id, { facialEmbedding: newFacialEmbedding });
     }
 
     /**
@@ -137,17 +124,48 @@ class StudentService extends BaseService {
         return student;
     }
 
+    async loadStudentsFromRoom(roomId) {
+        const classes = await Class.find(
+            { rooms: roomId },
+            "code"
+        ).lean();
+
+        if (!classes.length) return [];
+
+        const classCodes = classes.map(c => c.code.toUpperCase());
+
+        const students = await this.model
+            .find(
+                {
+                    isActive: true,
+                    classes: { $in: classCodes },
+                    facialEmbedding: { $exists: true }
+                }
+            )
+            .select([
+                "_id",
+                "+facialEmbedding.embedding",
+                "+facialEmbedding.nonce",
+                "facialEmbedding.alg",
+                "facialEmbedding.version"
+            ])
+            .lean();
+
+        return students;
+    }
+
+    
     /**
- * Retorna os dados de todos os alunos para uso na API de reconhecimento facial
- * Estrutura:
- * [
- *   {
- *     _id: "<id do aluno>",
- *     facial: "<facialId>",
- *     salas: ["<classId1>", "<classId2>", ...]
- *   }
- * ]
- */
+     * Retorna os dados de todos os alunos para uso na API de reconhecimento facial
+     * Estrutura:
+     * [
+     *   {
+     *     _id: "<id do aluno>",
+     *     facial: "<facialId>",
+     *     salas: ["<classId1>", "<classId2>", ...]
+     *   }
+     * ]
+     */
     async loadAllFacesData() {
         // Busca apenas alunos ativos com facialId
         const students = await this.model.find(

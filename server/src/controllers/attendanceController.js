@@ -48,7 +48,9 @@ const attendanceController = {
                     contentType: req.file.mimetype
                 });
 
-
+                const candidates = await StudentService.loadStudentsFromRoom(room);
+                formData.append('candidates', JSON.stringify(candidates));
+                
                 // Chamar API facial
                 const response = await axios.post(
                     `${facialApiUrl}/recognize`,
@@ -62,7 +64,6 @@ const attendanceController = {
                     }
                 );
 
-                console.log(response)
                 let {studentId}  = response.data;
                 if (!studentId) {
                     return ApiResponse.NOTFOUND(res, "Rosto não reconhecido.");

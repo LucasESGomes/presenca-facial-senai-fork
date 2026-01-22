@@ -47,8 +47,9 @@ class AttendanceService extends BaseService {
             if (foundClass ) {
                 studentClassIds.push(foundClass._id.toString());
             }}
-
-        if (!studentClassIds.includes(session.class.toString())) {
+            console.log("Student class IDs:", studentClassIds);
+            console.log("Session class ID:", session.class.toString());
+            if (!studentClassIds.includes(session.class.toString())) {
             throw new ConflictError("Aluno não pertence à turma desta sessão.");
         }
 

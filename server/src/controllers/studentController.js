@@ -36,9 +36,9 @@ class StudentController {
 
     updateFace = controllerWrapper(async (req, res) => {
         const { id } = req.params;
-        const { facialId } = req.body;
+        const { embedding, nonce } = req.body;
 
-        const updated = await StudentService.updateFaceData(id, facialId);
+        const updated = await StudentService.updateFaceData(id, embedding, nonce);
         return ApiResponse.OK(res, "Identificação facial atualizada com sucesso.", updated);
     });
 

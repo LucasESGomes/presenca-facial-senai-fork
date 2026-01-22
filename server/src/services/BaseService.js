@@ -46,6 +46,7 @@ export default class BaseService {
 
             // erro de índice único → duplicidade
             if (err.code === 11000){
+                console.error("⚠️ ERRO DE DUPLICIDADE:", err.keyValue);
                 const field = Object.keys(err.keyValue)[0];
                 throw new ConflictError("Registro duplicado, já existe um registro com o mesmo " + field + ".");
             }

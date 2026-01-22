@@ -18,3 +18,6 @@ opencv-python-headless==4.11.0.86
 
 # HTTP
 httpx==0.28.1
+
+# Crypto (AES-256-GCM para embeddings)
+cryptography==42.0.7

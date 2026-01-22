@@ -1,10 +1,44 @@
 import mongoose from "mongoose";
 
+const facialEmbeddingSchema = new mongoose.Schema(
+    {
+        embedding: {
+            type: String,
+            required: true,
+            select: false 
+        },
+        nonce: {
+            type: String,
+            required: true,
+            select: false
+        },
+        alg: {
+            type: String,
+            default: "AES-256-GCM"
+        },
+        version: {
+            type: Number,
+            default: 1
+        }
+    },
+    { _id: false }
+);
+
 const studentSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
-        registration: { type: String, required: true, unique: true }, // matrícula
-        facialId: { type: String, unique: true, select: false },
+
+        registration: {
+            type: String,
+            required: true,
+            unique: true
+        },
+
+        facialEmbedding: {
+            type: facialEmbeddingSchema,
+            required: false // aluno pode existir sem rosto cadastrado
+        },
+
         classes: [
             {
                 type: String,
@@ -12,6 +46,7 @@ const studentSchema = new mongoose.Schema(
                 trim: true
             }
         ],
+
         isActive: { type: Boolean, default: true },
     },
     { timestamps: true }
