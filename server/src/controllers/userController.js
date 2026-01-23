@@ -6,6 +6,11 @@ import AccessRequestService from "../services/AccessRequestService.js";
 import { userSchemas } from "../validations/userValidation.js";
 
 const userController = {
+    createRootUserIfNotExists: controllerWrapper(async (req, res) => {
+        await UserService.createRootUserIfNotExists();
+        return ApiResponse.CREATED(res, "Usuário root criado com sucesso.");
+    }),
+
     create: controllerWrapper(async (req, res) => {
         const requestId = req.body.accessRequestId;
 

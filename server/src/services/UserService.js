@@ -4,6 +4,7 @@ import { userSchemas } from "../validations/userValidation.js";
 import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "../errors/appError.js";
 import AccessRequestService from "./AccessRequestService.js";
 import bcrypt from "bcrypt";
+import logger from "../utils/logger.js";
 
 class UserService extends BaseService {
     constructor() {
@@ -35,6 +36,41 @@ class UserService extends BaseService {
     async create(userData) {
         const created = await super.create(userData);
         return this.#stripSensitiveData(created);
+    }
+
+    async createRootUserIfNotExists() {
+        const rootEmail = process.env.ROOT_USER_EMAIL;
+        const rootPassword = process.env.ROOT_USER_PASSWORD;
+        if (!rootEmail || !rootPassword) {
+            logger.warn("⚠️  ROOT_USER_EMAIL ou ROOT_USER_PASSWORD não estão definidos nas variáveis de ambiente.");
+            return;
+        }
+
+        try {
+            const existingUser = await this.model.findOne({email: rootEmail});
+            if (existingUser) {
+                throw new ConflictError("Usuário root já existe.");
+            }
+
+            const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
+            const hashedPassword = await bcrypt.hash(rootPassword, saltRounds);
+
+            await this.create({
+                name: "Administrador Root",
+                email: rootEmail,
+                password: hashedPassword,
+                role: "coordenador"
+            });
+
+            logger.info("✅ Usuário root criado com sucesso.");
+        } catch (error) {
+            if (error instanceof ConflictError) {
+            logger.info("✅ Usuário root já existe.");
+            return;
+            }
+            logger.error("❌ Erro ao criar o usuário root:", error.message);
+        }
+        
     }
 
     /**

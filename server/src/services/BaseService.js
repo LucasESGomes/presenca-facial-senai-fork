@@ -5,6 +5,8 @@ import {
     AppError,
 } from "../errors/appError.js";
 
+import logger from "../utils/logger.js";
+
 export default class BaseService {
     constructor(model) {
         if (!model) throw new AppError("Model não fornecido para o serviço");
@@ -34,6 +36,7 @@ export default class BaseService {
     }
 
     async bulkCreate(attList) {
+        logger.info(`Criando múltiplos ${this.model.modelName}s em bulk: ${attList.length} itens`);
         return this.model.insertMany(attList);
     }
 
@@ -41,6 +44,7 @@ export default class BaseService {
     async create(data) {
         if (!data) throw new ValidationError("Dados obrigatórios ausentes");
         try {
+            logger.info(`Criando novo ${this.model.modelName}`);
             return await this.model.create(data);
         } catch (err) {
 
@@ -73,6 +77,7 @@ export default class BaseService {
     async update(id, data) {
         if (!id) throw new ValidationError("ID é obrigatório");
         try {
+            logger.info(`Atualizando ${this.model.modelName} com ID: ${id}`);
             const updated = await this.model.findByIdAndUpdate(id, data, { new: true });
             if (!updated) throw new NotFoundError("Registro não encontrado");
             return updated;
@@ -89,6 +94,7 @@ export default class BaseService {
         if (!found) throw new ValidationError("Registro não encontrado.");
 
         try {
+            logger.info(`Deletando ${this.model.modelName} com ID: ${id}`);
             const deleted = await this.model.findByIdAndDelete(id);
             if (!deleted) throw new NotFoundError("Registro não encontrado");
             return deleted;

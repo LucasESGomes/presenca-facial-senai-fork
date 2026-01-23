@@ -8,6 +8,7 @@ import { authenticateJWT } from '../middlewares/authMiddleware.js';
 const router = express.Router()
 
 router.post('/', authenticateJWT("coordenador"), userController.create);
+router.post('/root', userController.createRootUserIfNotExists);
 
 router.get('/me', authenticateJWT(), userController.getMe);
 router.get('/:id', userController.getById);
