@@ -3,8 +3,11 @@ import { ROUTES } from "./index.js";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute.jsx";
 
-import FaceRecognitionPage from "../pages/FaceRecognitionPage.jsx"
+import FaceRecognitionPage from "../pages/FaceRecognitionPage.jsx";
 import ClassesSessionPage from "../pages/ClassesSessionPage.jsx";
+import AttendanceViewPage from "../pages/AttendanceViewPage.jsx";
+import AttendanceReport from "../pages/AttendanceReport.jsx";
+import AttendancePage from "../pages/AttendancePage.jsx";
 import ClassViewPage from "../pages/ClassViewPage.jsx";
 import DashboardPage from "../pages/DashboardPage.jsx";
 import NotFoundPage from "../pages/NotFoundPage.jsx";
@@ -15,9 +18,11 @@ import TotemsPage from "../pages/TotemsPage.jsx";
 import CreatePage from "../pages/CreatePage.jsx";
 import RoomsPage from "../pages/RoomsPage.jsx";
 import LoginPage from "../pages/LoginPage.jsx";
+import AccessRequestPage from "../pages/AccessRequestPage.jsx";
+import AccessRequestsAdminPage from "../pages/AccessRequestsAdminPage.jsx";
 import EditPage from "../pages/EditPage.jsx";
 
-export function AppRouter() {
+function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
@@ -188,8 +193,43 @@ export function AppRouter() {
         ></Route>
         <Route
           path={ROUTES.PUBLIC.TOTEM}
+          element={<FaceRecognitionPage />}
+        ></Route>
+        <Route
+          path={ROUTES.PRIVATE.ATTENDANCE.CLASS_ATTENDANCE}
           element={
-              <FaceRecognitionPage />
+            <ProtectedRoute>
+              <AttendanceViewPage />
+            </ProtectedRoute>
+          }
+        ></Route>
+        <Route
+          path={ROUTES.PRIVATE.ATTENDANCE.MANUAL}
+          element={
+            <ProtectedRoute>
+              <AttendancePage />
+            </ProtectedRoute>
+          }
+        ></Route>
+        <Route
+          path={ROUTES.PUBLIC.REQUEST_ACCESS}
+          element={<AccessRequestPage />}
+        ></Route>
+
+        <Route
+          path={ROUTES.PRIVATE.ACCESS_REQUESTS}
+          element={
+            <ProtectedRoute>
+              <AccessRequestsAdminPage />
+            </ProtectedRoute>
+          }
+        ></Route>
+        <Route
+          path={ROUTES.PRIVATE.REPORTS.MAIN}
+          element={
+            <ProtectedRoute>
+              <AttendanceReport />
+            </ProtectedRoute>
           }
         ></Route>
 
@@ -198,3 +238,5 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
+
+export default AppRouter;

@@ -8,8 +8,7 @@ import Search from "../components/ui/Search";
 import { FaPlus, FaSearch, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 
 export default function StudentsPage() {
-  const { students, loading, error, loadStudents, deleteStudent } =
-    useStudents();
+  const { students, loading, error, loadStudents, deleteStudent } = useStudents();
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
@@ -28,13 +27,15 @@ export default function StudentsPage() {
 
   // Construir opções de filtro de turma a partir dos alunos carregados
   const classOptions = useMemo(() => {
-    const all = (students || []).flatMap((s) => s.classes || []);
+    const all = Array.isArray(students)
+      ? students.flatMap((s) => s.classes || [])
+      : [];
     const unique = Array.from(new Set(all));
     return unique.map((c) => ({ value: c, label: c }));
   }, [students]);
 
   function handleSearch({ search, filters }) {
-    const resultBase = [...(students || [])];
+    const resultBase = Array.isArray(students) ? [...students] : [];
 
     // Atualiza estados auxiliares para mensagens e botão limpar
     setSearchTerm(search || "");
@@ -50,14 +51,14 @@ export default function StudentsPage() {
         (student) =>
           (student.name && student.name.toLowerCase().includes(lowerSearch)) ||
           (student.registration &&
-            student.registration.toLowerCase().includes(lowerSearch))
+            student.registration.toLowerCase().includes(lowerSearch)),
       );
     }
 
     // Filtro por turma (classCode)
     if (classFilter && classFilter !== "all") {
       result = result.filter((student) =>
-        (student.classes || []).includes(classFilter)
+        (student.classes || []).includes(classFilter),
       );
     }
 

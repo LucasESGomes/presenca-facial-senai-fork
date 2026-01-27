@@ -45,6 +45,7 @@ export const                ROUTES = {
         ATTENDANCE: {
             MANUAL: '/attendance/manual',
             HISTORY: '/attendance/history',
+            CLASS_ATTENDANCE: '/attendances/session/:id',
         },
         ROOMS: {
             LIST: '/rooms',
@@ -65,6 +66,7 @@ export const                ROUTES = {
         },
         PROFILE: '/profile',
         SETTINGS: '/settings',
+        ACCESS_REQUESTS: '/access-requests',
     },
 
     // Utilitários para construir URLs dinâmicas

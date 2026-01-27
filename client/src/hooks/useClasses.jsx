@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { classesApi } from "../api/classes";
 
-export function useClasses() {
+export default function useClasses() {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -56,7 +56,9 @@ const userController = {
             const paginatedResult = await UserService.getAllPaginated({page, limit, filter});
             return ApiResponse.OK_PAGINATED(res, "", paginatedResult.page, paginatedResult.limit, paginatedResult.totalPages, paginatedResult.items);
         }
-        
+        // If no pagination requested, return full list
+        const users = await UserService.getAll(filter);
+        return ApiResponse.OK(res, "", users);
     }),
 
     getMe: controllerWrapper(async (req, res) => {

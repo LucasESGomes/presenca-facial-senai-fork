@@ -155,7 +155,7 @@ export default function RoomsPage() {
               </div>
               <Link
                 to="/rooms/new"
-                className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200"
+                className="inline-flex items-center px-5 py-3 bg-linear-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 <FaPlus className="mr-2" />
                 Nova Sala

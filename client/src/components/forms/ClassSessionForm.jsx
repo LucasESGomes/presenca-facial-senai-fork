@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import useClassesSessions from "../../hooks/useClassesSessions";
-import useUsers from "../../hooks/useUsers";
+import { useUsers } from "../../hooks/useUsers";
 import { useRooms } from "../../hooks/useRooms";
-import { useClasses } from "../../hooks/useClasses";
+import useClasses from "../../hooks/useClasses";
 
 export default function ClassSessionForm({
   mode = "create",
@@ -98,7 +98,7 @@ export default function ClassSessionForm({
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
       {/* TÍTULO */}
       <input
-        name="title"
+        name="name"
         value={form.name}
         onChange={handleChange}
         placeholder="Título da aula"

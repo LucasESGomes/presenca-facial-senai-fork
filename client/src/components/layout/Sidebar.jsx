@@ -322,7 +322,7 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
                 >
                   <OVLogo className="w-10 h-10" />
                   <p className="text-xs text-red-300 mt-2">
-                    Desenvolvido por Otávio Vinicius
+                    Desenvolvido por Otávio Vinicius & Lucas Gomes
                   </p>
                 </motion.div>
               </div>

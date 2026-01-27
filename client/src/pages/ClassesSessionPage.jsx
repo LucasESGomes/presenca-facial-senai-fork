@@ -3,8 +3,8 @@ import Search from "../components/ui/Search";
 import { useEffect, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import useClassesSessions from "../hooks/useClassesSessions";
-import useUsers from "../hooks/useUsers";
-import { useClasses } from "../hooks/useClasses";
+import { useUsers } from "../hooks/useUsers";
+import useClasses from "../hooks/useClasses";
 
 export default function ClassesSession() {
   const { id } = useParams();
@@ -147,10 +147,15 @@ export default function ClassesSession() {
                     <p>Duração: {s.duration || "-"} min</p>
                     <p>Status: {s.isClosed ? "Fechada" : "Aberta"}</p>
                   </div>
-
+                  <button
+                    onClick={() => navigate(`/attendances/session/${s._id || s.id}`)}
+                    className=""
+                  >
+                    Gerenciar
+                  </button>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleEdit(session._id)}
+                      onClick={() => handleEdit(s._id)}
                       className="px-3 py-1 bg-yellow-400 text-white rounded"
                     >
                       Editar

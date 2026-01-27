@@ -8,7 +8,7 @@ import {
   FaEnvelope,
 } from "react-icons/fa";
 import { useStudents } from "../../hooks/useStudents";
-import { useClasses } from "../../hooks/useClasses";
+import useClasses from "../../hooks/useClasses";
 
 export default function StudentForm({
   mode: propMode,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaArrowLeft, FaCheck, FaTimes } from "react-icons/fa";
-import useUsers from "../../hooks/useUsers";
+import { useUsers } from "../../hooks/useUsers";
 
 export default function TeacherForm({
   mode: propMode,

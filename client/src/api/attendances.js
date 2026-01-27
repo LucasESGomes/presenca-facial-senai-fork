@@ -1,6 +1,6 @@
 import api from '../services/api';
 
-export const attendancesApi = {
+ export const attendancesApi = {
 
     getBySession: (sessionId) => api.get(`/attendances/session/${sessionId}`),
 
@@ -19,4 +19,8 @@ export const attendancesApi = {
 
     getFullReportBySession: (sessionId) => api.get(`/attendances/session/${sessionId}/full-report`),
 
+    getById: (id) => api.get(`/attendances/${id}`),
+
 }
+
+export default attendancesApi;

@@ -1,3 +1,4 @@
+import AttendanceForm from "../components/forms/AttendanceForm";
 import StudentForm from "../components/forms/StudentForm";
 import TeacherForm from "../components/forms/TeacherForm";
 import ClassForm from "../components/forms/ClassForm";
@@ -7,7 +8,7 @@ import TotemForm from "../components/forms/TotemForm";
 
 //Hooks
 import useClassesSessions from "../hooks/useClassesSessions";
-import { useClasses } from "../hooks/useClasses";
+import useClasses from "../hooks/useClasses";
 import { useStudents } from "../hooks/useStudents";
 import { useRooms } from "../hooks/useRooms";
 import { useTotems } from "../hooks/useTotems";
@@ -41,6 +42,8 @@ export default function CreatePage() {
         return <TeacherForm />;
       case "class-sessions":
         return <ClassSession mode="create" onSubmit={createSession} />;
+      case "attendances":
+        return <AttendanceForm mode="create" />;
       default:
         return <div>Tipo inválido</div>;
     }

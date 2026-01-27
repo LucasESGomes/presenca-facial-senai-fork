@@ -38,6 +38,22 @@ export default function ClassesSessions() {
     }
   }, []);
 
+  const loadAll = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data } = await classesSessionsApi.getAll();
+      setSessions(data || []);
+      return { success: true, data: data || [] };
+    } catch (err) {
+      const message = err.message || "Erro ao carregar sessões";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const getById = useCallback(async (id) => {
     try {
       setLoading(true);
@@ -98,7 +114,6 @@ export default function ClassesSessions() {
     }
   }, []);
 
-
   const deleteSession = useCallback(async (id) => {
     try {
       setLoading(true);
@@ -115,23 +130,23 @@ export default function ClassesSessions() {
     }
   }, []);
 
-   const closeSession = useCallback(async (id) => {
-     try {
-       setLoading(true);
-       setError(null);
-       const { data } = await classesSessionsApi.closeSession(id);
-       setSessions((prev) =>
-         prev.map((s) => (s._id === id || s.id === id ? data : s))
-       );
-       return { success: true, data };
-     } catch (err) {
-       const message = err.message || "Erro ao fechar sessão";
-       setError(message);
-       return { success: false, message };
-     } finally {
-       setLoading(false);
-     }
-   }, []);
+  const closeSession = useCallback(async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data } = await classesSessionsApi.closeSession(id);
+      setSessions((prev) =>
+        prev.map((s) => (s._id === id || s.id === id ? data : s)),
+      );
+      return { success: true, data };
+    } catch (err) {
+      const message = err.message || "Erro ao fechar sessão";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     sessions,
@@ -139,6 +154,7 @@ export default function ClassesSessions() {
     error,
     loadByClass,
     loadByTeacher,
+    loadAll,
     getById,
     createSession,
     updateSession,

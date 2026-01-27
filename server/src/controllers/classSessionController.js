@@ -42,6 +42,17 @@ const classSessionController = {
     }),
 
     /**
+     * Buscar todas as sessões (coordenador)
+     */
+    getAll: controllerWrapper(async (req, res) => {
+        if (req.user.role !== 'coordenador') {
+            return ApiResponse.FORBIDDEN(res, "Acesso negado.");
+        }
+        const sessions = await ClassSessionService.getAll();
+        return ApiResponse.OK(res, "", sessions);
+    }),
+
+    /**
      * Atualizar dados básicos da sessão
      */
     update: controllerWrapper(async (req, res) => {
