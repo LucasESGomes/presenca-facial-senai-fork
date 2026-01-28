@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FaClock, FaUserCheck, FaUserTimes } from "react-icons/fa";
 import useAttendances from "../hooks/useAttendances";
@@ -6,15 +6,67 @@ import Layout from "../components/layout/Layout";
 
 function AttendancesBySession() {
   const { sessionId } = useParams();
+  const [attendances, setAttendances] = useState([]);
 
-  const { attendances, loading, error, getAttendanceBySession, createManual } =
+  const { loading, error, getFullReportBySession, createManual } =
     useAttendances();
 
   useEffect(() => {
     if (sessionId) {
-      getAttendanceBySession(sessionId);
+      (async () => {
+        try {
+          const res = await getFullReportBySession(sessionId);
+          console.log("Full report response:", res);
+
+          if (res?.success && res.data) {
+            console.log("Data structure:", res.data);
+            console.log("Presentes:", res.data.presentes);
+            console.log("Ausentes:", res.data.ausentes);
+
+            // Ensure presentes is an array
+            const presentesList = Array.isArray(res.data.presentes)
+              ? res.data.presentes
+              : [];
+            const ausentesList = Array.isArray(res.data.ausentes)
+              ? res.data.ausentes
+              : [];
+
+            // Combine presentes and ausentes into single array
+            const presentes = presentesList.map((a) => ({
+              _id: a._id || a.id,
+              student: a.student,
+              status: "presente",
+              checkInTime: a.checkInTime,
+              createdAt: a.createdAt,
+              preAttendance: a.preAttendance,
+            }));
+
+            const ausentes = ausentesList.map((s, idx) => {
+              const studentObj =
+                typeof s === "object" ? s : { _id: s, name: s };
+              return {
+                _id: studentObj._id || `ausente-${idx}`,
+                student: studentObj,
+                status: "ausente",
+                createdAt: new Date().toISOString(),
+              };
+            });
+
+            const combined = [...presentes, ...ausentes];
+            console.log("Combined attendances:", combined);
+            console.log("Total count:", combined.length);
+            setAttendances(combined);
+          } else {
+            console.log("No data returned or success is false:", res);
+            setAttendances([]);
+          }
+        } catch (err) {
+          console.error("Error loading attendances:", err);
+          setAttendances([]);
+        }
+      })();
     }
-  }, [sessionId, getAttendanceBySession]);
+  }, [sessionId, getFullReportBySession]);
 
   const renderStatus = (status) => {
     if (status === "pre_pending") {
@@ -60,8 +112,30 @@ function AttendancesBySession() {
         status: "presente",
       });
       if (res?.success) {
-        // refresh
-        await getAttendanceBySession(sessionId);
+        // refresh the full report
+        const reportRes = await getFullReportBySession(sessionId);
+        if (reportRes?.success && reportRes.data) {
+          const presentes = (reportRes.data.presentes || []).map((a) => ({
+            _id: a._id,
+            student: a.student,
+            status: "presente",
+            checkInTime: a.checkInTime,
+            createdAt: a.createdAt,
+            preAttendance: a.preAttendance,
+          }));
+
+          const ausentes = (reportRes.data.ausentes || []).map((s, idx) => {
+            const studentObj = typeof s === "object" ? s : { _id: s, name: s };
+            return {
+              _id: studentObj._id || `ausente-${idx}`,
+              student: studentObj,
+              status: "ausente",
+              createdAt: new Date().toISOString(),
+            };
+          });
+
+          setAttendances([...presentes, ...ausentes]);
+        }
       } else {
         alert(res.message || "Erro ao confirmar presença");
       }
@@ -96,7 +170,8 @@ function AttendancesBySession() {
 
         {!loading && !error && attendances.length === 0 && (
           <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-            Nenhuma presença registrada para esta aula.
+            <p>Nenhuma presença registrada para esta aula.</p>
+            <p className="text-sm mt-2">Session ID: {sessionId}</p>
           </div>
         )}
 

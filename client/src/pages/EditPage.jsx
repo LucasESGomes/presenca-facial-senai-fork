@@ -2,7 +2,7 @@ import AttendanceForm from "../components/forms/AttendanceForm";
 import StudentForm from "../components/forms/StudentForm";
 import TeacherForm from "../components/forms/TeacherForm";
 import ClassForm from "../components/forms/ClassForm";
-import ClassSession from "../components/forms/ClassSessionForm";
+import ClassSessionForm from "../components/forms/ClassSessionForm";
 import RoomForm from "../components/forms/RoomForm";
 import TotemForm from "../components/forms/TotemForm";
 
@@ -39,6 +39,8 @@ export default function EditPage() {
 
   const isClassSessionEdit =
     pathname.startsWith("/class-sessions/") &&
+    !pathname.includes("/class/") &&
+    !pathname.includes("/teacher/") &&
     !pathname.endsWith("/active") &&
     !pathname.endsWith("/report");
 

@@ -41,6 +41,9 @@ export default function AttendanceForm({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [studentStatuses, setStudentStatuses] = useState({});
+  // Manual attendance should be individual by default.
+  // Enable bulk mode explicitly if needed in the future.
+  const isBulkMode = false;
 
   useEffect(() => {
     if (propData) {
@@ -78,8 +81,12 @@ export default function AttendanceForm({
     setError(null);
 
     try {
-      if (Array.isArray(propStudents) && propStudents.length > 0) {
-        // Bulk mode: create attendance for each student in list
+      if (
+        isBulkMode &&
+        Array.isArray(propStudents) &&
+        propStudents.length > 0
+      ) {
+        // Bulk mode (disabled by default): create attendance for each student in list
         if (!selectedSession?._id) {
           setError("Sessão não selecionada");
           setSubmitting(false);
@@ -136,7 +143,13 @@ export default function AttendanceForm({
 
         if (res?.success !== false) {
           setSuccess(true);
-          setTimeout(() => navigate(-1), 1200);
+          // For manual single registrations, remain on page so teacher can register more students
+          if (mode === "create" && !isBulkMode) {
+            setSelectedStudent(null);
+            setForm({ status: "presente" });
+          } else {
+            setTimeout(() => navigate(-1), 1200);
+          }
         } else {
           setError(res.message || "Erro ao salvar presença");
         }
@@ -195,7 +208,7 @@ export default function AttendanceForm({
   // initialize statuses when filteredStudents change (bulk mode)
   // Depend on length and selectedSession id to avoid effect running every render
   useEffect(() => {
-    if (Array.isArray(propStudents) && propStudents.length > 0) {
+    if (isBulkMode && Array.isArray(propStudents) && propStudents.length > 0) {
       const map = {};
       filteredStudents.forEach((s) => {
         map[s._id] = studentStatuses[s._id] || "presente";
@@ -281,7 +294,9 @@ export default function AttendanceForm({
 
             {mode === "create" && (
               <>
-                {Array.isArray(propStudents) && propStudents.length > 0 ? (
+                {isBulkMode &&
+                Array.isArray(propStudents) &&
+                propStudents.length > 0 ? (
                   <div>
                     <label className="block text-gray-700 font-semibold mb-2">
                       Alunos da Turma

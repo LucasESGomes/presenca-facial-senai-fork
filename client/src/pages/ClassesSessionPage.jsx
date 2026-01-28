@@ -5,6 +5,27 @@ import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import useClassesSessions from "../hooks/useClassesSessions";
 import { useUsers } from "../hooks/useUsers";
 import useClasses from "../hooks/useClasses";
+import {
+  FaCalendarAlt,
+  FaChalkboardTeacher,
+  FaUsers,
+  FaClock,
+  FaDoorOpen,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaLock,
+  FaLockOpen,
+  FaEye,
+  FaSpinner,
+  FaExclamationTriangle,
+  FaListAlt,
+  FaBuilding,
+  FaArrowLeft,
+  FaChartBar,
+  FaCheckCircle,
+  FaTimesCircle,
+} from "react-icons/fa";
 
 export default function ClassesSession() {
   const { id } = useParams();
@@ -56,131 +77,407 @@ export default function ClassesSession() {
       res = res.filter(
         (s) =>
           (s.title || "").toLowerCase().includes(search.toLowerCase()) ||
-          (s.notes || "").toLowerCase().includes(search.toLowerCase())
+          (s.notes || "").toLowerCase().includes(search.toLowerCase()),
       );
     }
     setFiltered(res);
   }
 
   async function handleDelete(sessionId) {
-    if (!confirm("Excluir sessão?")) return;
+    if (
+      !window.confirm(
+        "Tem certeza que deseja excluir esta sessão?\nEsta ação não pode ser desfeita.",
+      )
+    )
+      return;
     await deleteSession(sessionId);
   }
 
   async function handleClose(sessionId) {
-    await closeSession(sessionId);
+    try {
+      const res = await closeSession(sessionId);
+      if (res?.success) {
+        // Refresh the sessions list to show updated status
+        if (isByTeacher) {
+          await loadByTeacher(id);
+        } else {
+          await loadByClass(id);
+        }
+      } else {
+        alert(res?.message || "Erro ao fechar/reabrir sessão");
+      }
+    } catch (err) {
+      alert(err.message || "Erro ao fechar/reabrir sessão");
+    }
   }
 
   const handleEdit = (id) => {
     console.log("SESSION ID:", id);
     navigate(`/class-sessions/${id}`);
-  }
+  };
 
   return (
     <Layout>
-      {!id && (
-        <>
-          <h2 className="text-xl font-bold mb-4">Sessões por Turma</h2>
+      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+        {/* Cabeçalho Geral */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+            <FaCalendarAlt className="text-red-600 mr-3" />
+            Sessões de Aula
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Gerencie as sessões de aula por turma ou professor
+          </p>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {classes.map((cls) => (
-              <Link
-                key={cls._id}
-                to={`/class-sessions/class/${cls._id}`}
-                className="border rounded p-4 hover:bg-gray-50"
-              >
-                <strong>{cls.name}</strong>
-                <p className="text-sm text-gray-600">{cls.code}</p>
-              </Link>
-            ))}
-          </div>
+        {!id && (
+          <>
+            {/* Seção de Turmas */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <FaUsers className="text-blue-600 mr-2" />
+                  Sessões por Turma
+                </h2>
+                <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
+                  {classes.length} turmas
+                </span>
+              </div>
 
-          <h2 className="text-xl font-bold mb-4">Sessões por Professor</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {teachers.map((t) => (
-              <Link
-                key={t._id}
-                to={`/class-sessions/teacher/${t._id}`}
-                className="border rounded p-4 hover:bg-gray-50"
-              >
-                <strong>{t.name}</strong>
-                <p className="text-sm text-gray-600">{t.email}</p>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-
-      {id && (
-        <>
-          <Search placeholder="Buscar sessões..." onChange={handleSearch} />
-
-          {!isByTeacher && (
-            <div className="flex justify-end mt-4">
-              <Link
-                to={`/class-sessions/`}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Nova sessão
-              </Link>
-            </div>
-          )}
-
-          {loading && <div className="mt-6">Carregando...</div>}
-          {error && <div className="mt-6 text-red-600">{error}</div>}
-
-          <div className="mt-6 space-y-4">
-            {filtered.length === 0 ? (
-              <div className="text-gray-600">Nenhuma sessão encontrada.</div>
-            ) : (
-              filtered.map((s) => (
-                <div
-                  key={s._id || s.id}
-                  className="border rounded p-4 flex justify-between items-start"
-                >
-                  <div>
-                    <h3 className="font-bold">{s.title}</h3>
-                    <p>
-                      Data: {s.date ? new Date(s.date).toLocaleString() : "-"}
-                    </p>
-                    <p>Duração: {s.duration || "-"} min</p>
-                    <p>Status: {s.isClosed ? "Fechada" : "Aberta"}</p>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/attendances/session/${s._id || s.id}`)}
-                    className=""
-                  >
-                    Gerenciar
-                  </button>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(s._id)}
-                      className="px-3 py-1 bg-yellow-400 text-white rounded"
-                    >
-                      Editar
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(s._id || s.id)}
-                      className="px-3 py-1 bg-red-500 text-white rounded"
-                    >
-                      Excluir
-                    </button>
-
-                    <button
-                      onClick={() => handleClose(s._id || s.id)}
-                      className="px-3 py-1 bg-blue-500 text-white rounded"
-                    >
-                      Fechar
-                    </button>
-                  </div>
+              {classes.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
+                  <FaUsers className="text-gray-300 text-4xl mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhuma turma cadastrada</p>
                 </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {classes.map((cls) => (
+                    <Link
+                      key={cls._id}
+                      to={`/class-sessions/class/${cls._id}`}
+                      className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 overflow-hidden group"
+                    >
+                      <div className="p-6">
+                        <div className="flex items-start mb-4">
+                          <div className="bg-blue-100 p-3 rounded-lg mr-4">
+                            <FaBuilding className="text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-800 text-lg">
+                              {cls.name || "Turma sem nome"}
+                            </h3>
+                            <p className="text-gray-600 text-sm mt-1">
+                              {cls.code || "Sem código"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <FaClock className="mr-2" />
+                          <span>Clique para ver sessões</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Seção de Professores */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <FaChalkboardTeacher className="text-green-600 mr-2" />
+                  Sessões por Professor
+                </h2>
+                <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
+                  {teachers.length} professores
+                </span>
+              </div>
+
+              {teachers.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
+                  <FaChalkboardTeacher className="text-gray-300 text-4xl mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhum professor cadastrado</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {teachers.map((t) => (
+                    <Link
+                      key={t._id}
+                      to={`/class-sessions/teacher/${t._id}`}
+                      className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 overflow-hidden group"
+                    >
+                      <div className="p-6">
+                        <div className="flex items-start mb-4">
+                          <div className="bg-green-100 p-3 rounded-lg mr-4">
+                            <FaChalkboardTeacher className="text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-800 text-lg">
+                              {t.name || "Professor sem nome"}
+                            </h3>
+                            <p className="text-gray-600 text-sm mt-1 truncate">
+                              {t.email || "Sem e-mail"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <FaCalendarAlt className="mr-2" />
+                          <span>Clique para ver sessões</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {id && (
+          <>
+            {/* Cabeçalho Detalhado */}
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center text-gray-600 hover:text-gray-800 mb-4"
+                  >
+                    <FaArrowLeft className="mr-2" />
+                    Voltar
+                  </button>
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                    <FaListAlt className="text-red-600 mr-3" />
+                    {isByTeacher ? "Sessões do Professor" : "Sessões da Turma"}
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    {isByTeacher
+                      ? "Visualize e gerencie todas as sessões deste professor"
+                      : "Visualize e gerencie todas as sessões desta turma"}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
+                    {sessions?.length || 0} sessões
+                  </span>
+                  <span className="bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
+                    {sessions?.filter((s) => !s.isClosed).length || 0} abertas
+                  </span>
+                </div>
+              </div>
+
+              {/* Barra de Ações */}
+              <div className="bg-white rounded-xl shadow-md p-4 border border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="w-full sm:w-auto">
+                    <Search
+                      placeholder="Buscar sessões por título ou notas..."
+                      onChange={handleSearch}
+                    />
+                  </div>
+                  {!isByTeacher && (
+                    <Link
+                      to={`/class-sessions/`}
+                      className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <FaPlus className="mr-2" />
+                      Nova Sessão
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Conteúdo Principal */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                  <FaCalendarAlt className="text-red-600 mr-3" />
+                  Lista de Sessões
+                  <span className="ml-3 bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
+                    {filtered.length} registros
+                  </span>
+                </h3>
+              </div>
+
+              <div className="p-6">
+                {loading && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4">
+                      <FaSpinner className="hidden" />
+                    </div>
+                    <p className="text-gray-600">Carregando sessões...</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6">
+                    <div className="flex items-center">
+                      <FaExclamationTriangle className="mr-3 text-red-600" />
+                      <div>
+                        <p className="font-bold">Erro ao carregar sessões</p>
+                        <p className="text-sm mt-1">{error}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!loading && !error && filtered.length === 0 && (
+                  <div className="text-center py-12">
+                    <FaCalendarAlt className="text-gray-300 text-6xl mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                      Nenhuma sessão encontrada
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                      {isByTeacher
+                        ? "Este professor não possui sessões cadastradas"
+                        : "Esta turma não possui sessões cadastradas"}
+                    </p>
+                    {!isByTeacher && (
+                      <Link
+                        to={`/class-sessions/`}
+                        className="inline-flex items-center px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <FaPlus className="mr-2" />
+                        Criar Primeira Sessão
+                      </Link>
+                    )}
+                  </div>
+                )}
+
+                {!loading && !error && filtered.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {filtered.map((s) => {
+                      const sessionId = s._id || s.id;
+                      const isClosed = s.isClosed;
+
+                      return (
+                        <div
+                          key={sessionId}
+                          className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow duration-200"
+                        >
+                          {/* Cabeçalho da Sessão */}
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="font-bold text-gray-800 text-lg mb-2">
+                                {s.title || "Sessão sem título"}
+                              </h3>
+                              <div className="flex items-center">
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                                    isClosed
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-green-100 text-green-800"
+                                  }`}
+                                >
+                                  {isClosed ? (
+                                    <>
+                                      <FaLock className="mr-1" />
+                                      Fechada
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FaLockOpen className="mr-1" />
+                                      Aberta
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/attendances/session/${sessionId}/full-report`,
+                                )
+                              }
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                            >
+                              <FaChartBar className="mr-2" />
+                              Relatório
+                            </button>
+                          </div>
+
+                          {/* Informações da Sessão */}
+                          <div className="space-y-3 mb-6">
+                            <div className="flex items-center text-gray-700">
+                              <FaCalendarAlt className="text-gray-400 mr-3 w-5" />
+                              <div>
+                                <span className="text-sm text-gray-500">
+                                  Data
+                                </span>
+                                <p className="font-medium">
+                                  {s.date
+                                    ? new Date(s.date).toLocaleString("pt-BR")
+                                    : "-"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center text-gray-700">
+                              <FaClock className="text-gray-400 mr-3 w-5" />
+                              <div>
+                                <span className="text-sm text-gray-500">
+                                  Duração
+                                </span>
+                                <p className="font-medium">
+                                  {s.duration || "-"} minutos
+                                </p>
+                              </div>
+                            </div>
+                            {s.notes && (
+                              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                <strong>Notas:</strong> {s.notes}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Rodapé com Ações */}
+                          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
+                            <button
+                              onClick={() => handleEdit(sessionId)}
+                              className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center"
+                            >
+                              <FaEdit className="mr-2" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDelete(sessionId)}
+                              className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center"
+                            >
+                              <FaTrash className="mr-2" />
+                              Excluir
+                            </button>
+                            <button
+                              onClick={() => handleClose(sessionId)}
+                              className={`inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center ${
+                                isClosed
+                                  ? "bg-green-600 hover:bg-green-700"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              }`}
+                            >
+                              {isClosed ? (
+                                <>
+                                  <FaLockOpen className="mr-2" />
+                                  Reabrir
+                                </>
+                              ) : (
+                                <>
+                                  <FaLock className="mr-2" />
+                                  Fechar
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </Layout>
   );
 }

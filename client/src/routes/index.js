@@ -38,14 +38,14 @@ export const                ROUTES = {
             BY_TEACHER: '/class-sessions/teacher/:id',
             LIST: '/class-sessions/list',
             CREATE: '/class-sessions/',
-            EDIT: '/class-sessions/:Id',
+            EDIT: '/class-sessions/:id',
             ACTIVE: '/class-sessions/:id/active',
             REPORT: '/class-sessions/:id/report',
         },
         ATTENDANCE: {
             MANUAL: '/attendance/manual',
             HISTORY: '/attendance/history',
-            CLASS_ATTENDANCE: '/attendances/session/:id',
+            CLASS_ATTENDANCE: '/attendances/session/:id/full-report',
         },
         ROOMS: {
             LIST: '/rooms',

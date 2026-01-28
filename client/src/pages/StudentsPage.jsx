@@ -77,7 +77,7 @@ export default function StudentsPage() {
   };
 
   const handleEdit = (id) => {
-    navigate(`/students/${id}/edit`);
+    navigate(`/students/${id}`);
   };
 
   if (loading) {

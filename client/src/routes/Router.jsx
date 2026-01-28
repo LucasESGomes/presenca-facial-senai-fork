@@ -80,6 +80,22 @@ function AppRouter() {
           }
         ></Route>
         <Route
+          path={ROUTES.PRIVATE.STUDENTS.DETAIL}
+          element={
+            <ProtectedRoute>
+              <EditPage />
+            </ProtectedRoute>
+          }
+        ></Route>
+        <Route
+          path={ROUTES.PRIVATE.STUDENTS.EDIT}
+          element={
+            <ProtectedRoute>
+              <EditPage />
+            </ProtectedRoute>
+          }
+        ></Route>
+        <Route
           path={ROUTES.PRIVATE.TEACHERS.LIST}
           element={
             <ProtectedRoute>
