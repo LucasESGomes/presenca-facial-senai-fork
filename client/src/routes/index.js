@@ -39,12 +39,11 @@ export const                ROUTES = {
             LIST: '/class-sessions/list',
             CREATE: '/class-sessions/',
             EDIT: '/class-sessions/:id',
-            ACTIVE: '/class-sessions/:id/active',
-            REPORT: '/class-sessions/:id/report',
         },
         ATTENDANCE: {
             MANUAL: '/attendance/manual',
             HISTORY: '/attendance/history',
+            CLASS_SESSION_ATTENDANCES: '/attendances/session/:id',
             CLASS_ATTENDANCE: '/attendances/session/:id/full-report',
         },
         ROOMS: {

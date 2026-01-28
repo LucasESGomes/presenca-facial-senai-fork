@@ -60,7 +60,7 @@ export default function useAttendances() {
   }, []);
 
   // Visualizar presenças da aula
-  const getAttendanceBySession = useCallback(async (sessionId) => {
+  const getBySession = useCallback(async (sessionId) => {
     try {
       setLoading(true);
       setError(null);
@@ -165,7 +165,7 @@ export default function useAttendances() {
     error,
     createManual,
     createFacial,
-    getAttendanceBySession,
+    getBySession,
     getById,
     getFullReportBySession,
     update,

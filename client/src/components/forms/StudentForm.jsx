@@ -287,16 +287,19 @@ export default function StudentForm({
               </div>
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">
-                  Turma (classCode) *
+                  Turmas (classCode) *
                 </label>
                 <select
-                  name="classCode"
-                  value={form.classCode}
+                  name="classes"
+                  value={form.classes}
                   onChange={handleChange}
                   required
+                  multiple
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-colors bg-white"
                 >
-                  <option value="">Selecione a turma</option>
+                  <option value="" disabled>
+                    Selecione a(s) turma(s)
+                  </option>
                   {(availableClasses || []).map((c) => (
                     <option key={c._id || c.id || c.code} value={c.code}>
                       {c.code} {c.course ? `— ${c.course}` : ""}

@@ -388,7 +388,7 @@ export default function ClassesSession() {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/attendances/session/${sessionId}/full-report`,
+                                  `/attendances/session/${sessionId}`,
                                 )
                               }
                               className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"

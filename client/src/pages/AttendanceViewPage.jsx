@@ -8,65 +8,37 @@ function AttendancesBySession() {
   const { sessionId } = useParams();
   const [attendances, setAttendances] = useState([]);
 
-  const { loading, error, getFullReportBySession, createManual } =
-    useAttendances();
+  const { loading, error, getBySession, createManual } = useAttendances();
 
   useEffect(() => {
     if (sessionId) {
       (async () => {
         try {
-          const res = await getFullReportBySession(sessionId);
-          console.log("Full report response:", res);
-
-          if (res?.success && res.data) {
-            console.log("Data structure:", res.data);
-            console.log("Presentes:", res.data.presentes);
-            console.log("Ausentes:", res.data.ausentes);
-
-            // Ensure presentes is an array
-            const presentesList = Array.isArray(res.data.presentes)
-              ? res.data.presentes
-              : [];
-            const ausentesList = Array.isArray(res.data.ausentes)
-              ? res.data.ausentes
+          const res = await getBySession(sessionId);
+          // Response expected to be an array of attendance objects
+          const dataArray = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res.data?.data)
+              ? res.data.data
               : [];
 
-            // Combine presentes and ausentes into single array
-            const presentes = presentesList.map((a) => ({
-              _id: a._id || a.id,
-              student: a.student,
-              status: "presente",
-              checkInTime: a.checkInTime,
-              createdAt: a.createdAt,
-              preAttendance: a.preAttendance,
-            }));
+          const mapped = dataArray.map((a) => ({
+            _id: a._id || a.id,
+            student: a.student || (a.studentId ? { _id: a.studentId } : null),
+            status: a.status || (a.checkInTime ? "presente" : "ausente"),
+            checkInTime: a.checkInTime,
+            createdAt: a.createdAt,
+            preAttendance: a.preAttendance,
+          }));
 
-            const ausentes = ausentesList.map((s, idx) => {
-              const studentObj =
-                typeof s === "object" ? s : { _id: s, name: s };
-              return {
-                _id: studentObj._id || `ausente-${idx}`,
-                student: studentObj,
-                status: "ausente",
-                createdAt: new Date().toISOString(),
-              };
-            });
-
-            const combined = [...presentes, ...ausentes];
-            console.log("Combined attendances:", combined);
-            console.log("Total count:", combined.length);
-            setAttendances(combined);
-          } else {
-            console.log("No data returned or success is false:", res);
-            setAttendances([]);
-          }
+          setAttendances(mapped);
         } catch (err) {
           console.error("Error loading attendances:", err);
           setAttendances([]);
         }
       })();
     }
-  }, [sessionId, getFullReportBySession]);
+  }, [sessionId]);
 
   const renderStatus = (status) => {
     if (status === "pre_pending") {
@@ -112,29 +84,25 @@ function AttendancesBySession() {
         status: "presente",
       });
       if (res?.success) {
-        // refresh the full report
-        const reportRes = await getFullReportBySession(sessionId);
-        if (reportRes?.success && reportRes.data) {
-          const presentes = (reportRes.data.presentes || []).map((a) => ({
-            _id: a._id,
-            student: a.student,
-            status: "presente",
+        // refresh attendances for this session using the session route
+        const reportRes = await getBySession(sessionId);
+        if (reportRes?.success) {
+          const dataArray = Array.isArray(reportRes.data)
+            ? reportRes.data
+            : Array.isArray(reportRes.data?.data)
+              ? reportRes.data.data
+              : [];
+
+          const mapped = dataArray.map((a) => ({
+            _id: a._id || a.id,
+            student: a.student || (a.studentId ? { _id: a.studentId } : null),
+            status: a.status || (a.checkInTime ? "presente" : "ausente"),
             checkInTime: a.checkInTime,
             createdAt: a.createdAt,
             preAttendance: a.preAttendance,
           }));
 
-          const ausentes = (reportRes.data.ausentes || []).map((s, idx) => {
-            const studentObj = typeof s === "object" ? s : { _id: s, name: s };
-            return {
-              _id: studentObj._id || `ausente-${idx}`,
-              student: studentObj,
-              status: "ausente",
-              createdAt: new Date().toISOString(),
-            };
-          });
-
-          setAttendances([...presentes, ...ausentes]);
+          setAttendances(mapped);
         }
       } else {
         alert(res.message || "Erro ao confirmar presença");
