@@ -40,18 +40,18 @@ export default function useAttendances() {
       formData.append("image", imageFile); // OBRIGATÓRIO
       formData.append("timestamp", Date.now().toString()); // OPCIONAL
 
-      const response = await attendancesApi.createFacial(formData, {"x-totem-api-key": totemApiKey});
+      const response = await attendancesApi.createFacial(formData, {
+        "x-totem-api-key": totemApiKey,
+      });
       const { success, data, message } = response;
-      const student = data?.student;
       if (success) {
         return { success: true, data, message };
       }
-      
+
       setError(message);
       return { success: false, message };
     } catch (err) {
-      const message =
-        err?.message || "Erro no reconhecimento facial";
+      const message = err?.message || "Erro no reconhecimento facial";
       setError(message);
       return { success: false, message };
     } finally {
@@ -59,11 +59,115 @@ export default function useAttendances() {
     }
   }, []);
 
+  // Visualizar presenças da aula
+  const getBySession = useCallback(async (sessionId) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await attendancesApi.getBySession(sessionId);
+
+      if (response.success) {
+        const dataArray = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+
+        setAttendances(dataArray);
+        return { success: true, data: dataArray };
+      }
+
+      setError(response.message);
+      return { success: false, message: response.message };
+    } catch (err) {
+      const message = err.message || "Erro ao buscar presenças";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Obter presença por ID
+  const getById = useCallback(async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await attendancesApi.getById(id);
+
+      if (response.success) {
+        return { success: true, data: response.data };
+      }
+
+      setError(response.message);
+      return { success: false, message: response.message };
+    } catch (err) {
+      const message = err.message || "Erro ao buscar presença";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Relatório completo da sessão
+  const getFullReportBySession = useCallback(async (sessionId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await attendancesApi.getFullReportBySession(sessionId);
+
+      if (response.success) {
+        return { success: true, data: response.data };
+      }
+
+      setError(response.message);
+      return { success: false, message: response.message };
+    } catch (err) {
+      const message = err.message || "Erro ao obter relatório";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Atualizar presença
+  const update = useCallback(async (id, attendanceData) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await attendancesApi.update(id, attendanceData);
+
+      if (response.success) {
+        setAttendances((prev) =>
+          prev.map((a) => (a._id === id || a.id === id ? response.data : a)),
+        );
+        return { success: true, data: response.data };
+      }
+
+      setError(response.message);
+      return { success: false, message: response.message };
+    } catch (err) {
+      const message = err.message || "Erro ao atualizar presença";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   return {
     attendances,
     loading,
     error,
     createManual,
     createFacial,
+    getBySession,
+    getById,
+    getFullReportBySession,
+    update,
   };
 }

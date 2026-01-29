@@ -1,5 +1,5 @@
-import { useClasses } from "../../hooks/useClasses";
-import useUsers from "../../hooks/useUsers";
+import useClasses from "../../hooks/useClasses";
+import { useUsers } from "../../hooks/useUsers";
 import * as RoomsHook from "../../hooks/useRooms";
 import { useState, useEffect } from "react";
 import {

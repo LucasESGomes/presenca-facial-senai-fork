@@ -1,16 +1,18 @@
-import ClassForm from "../components/forms/ClassForm";
+import AttendanceForm from "../components/forms/AttendanceForm";
 import StudentForm from "../components/forms/StudentForm";
 import TeacherForm from "../components/forms/TeacherForm";
+import ClassForm from "../components/forms/ClassForm";
+import ClassSessionForm from "../components/forms/ClassSessionForm";
 import RoomForm from "../components/forms/RoomForm";
 import TotemForm from "../components/forms/TotemForm";
-import ClassSessionForm from "../components/forms/ClassSessionForm";
 
 import useClassesSessions from "../hooks/useClassesSessions";
-import { useClasses } from "../hooks/useClasses";
+import useClasses from "../hooks/useClasses";
 import { useStudents } from "../hooks/useStudents";
 import { useRooms } from "../hooks/useRooms";
 import { useTotems } from "../hooks/useTotems";
-import useUsers from "../hooks/useUsers";
+import { useUsers } from "../hooks/useUsers";
+import useAttendances from "../hooks/useAttendances";
 
 import Layout from "../components/layout/Layout";
 import { useLocation, useParams } from "react-router-dom";
@@ -31,11 +33,18 @@ export default function EditPage() {
 
   const [sessionData, setSessionData] = useState(null);
 
+  const { getById: getAttendanceById, update } = useAttendances();
+
+  const [attendanceData, setAttendanceData] = useState(null);
 
   const isClassSessionEdit =
     pathname.startsWith("/class-sessions/") &&
+    !pathname.includes("/class/") &&
+    !pathname.includes("/teacher/") &&
     !pathname.endsWith("/active") &&
     !pathname.endsWith("/report");
+
+  const isAttendanceEdit = type === "attendances";
 
   useEffect(() => {
     if (type === "classes") loadClasses();
@@ -54,14 +63,32 @@ export default function EditPage() {
         }
       })();
     }
-  }, [isClassSessionEdit, id]); 
+  }, [isClassSessionEdit, id]);
 
+  useEffect(() => {
+    if (isAttendanceEdit) {
+      (async () => {
+        const res = await getAttendanceById(id);
+        if (res?.success) {
+          setAttendanceData(res.data);
+        }
+      })();
+    }
+  }, [isAttendanceEdit, id, getAttendanceById]);
 
   // 🔒 Proteção de render
   if (isClassSessionEdit && !sessionData) {
     return (
       <Layout>
         <div>Carregando sessão...</div>
+      </Layout>
+    );
+  }
+
+  if (isAttendanceEdit && !attendanceData) {
+    return (
+      <Layout>
+        <div>Carregando presença...</div>
       </Layout>
     );
   }
@@ -120,6 +147,17 @@ export default function EditPage() {
             mode="edit"
             initialData={totems.find((t) => (t._id || t.id) === id)}
             onSubmit={(data) => updateTotem(id, data)}
+          />
+        );
+
+      case "attendances":
+        return (
+          <AttendanceForm
+            mode="edit"
+            initialData={attendanceData}
+            classSession={attendanceData?.session}
+            student={attendanceData?.student}
+            onSubmit={(data) => update(id, data)}
           />
         );
 

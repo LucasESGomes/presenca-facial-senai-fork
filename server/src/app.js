@@ -20,7 +20,7 @@ app.use(corsMiddleware);
 // Rate limiting 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 500,
     message: "Muitas requisições deste IP, tente novamente mais tarde."
 });
 app.use(limiter);

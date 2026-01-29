@@ -1,6 +1,6 @@
 import Layout from "../components/layout/Layout";
 import Search from "../components/ui/Search";
-import { useClasses } from "../hooks/useClasses";
+import useClasses from "../hooks/useClasses";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -109,7 +109,7 @@ export default function ClassesPage() {
               Criar Turma
               <FaPlus
                 size={18}
-                className="flex items-center inline-block ml-2"
+                className="flex items-center ml-2"
               />
             </button>
             <div className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">

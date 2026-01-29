@@ -14,7 +14,13 @@ export function useStudents() {
       const response = await studentsApi.getAll();
 
       if (response.success) {
-        setStudents(response.data || []);
+        setStudents(
+          Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.data)
+              ? response.data.data
+              : [],
+        );
       } else {
         setError(response.message || "Erro ao carregar alunos");
       }
@@ -33,7 +39,13 @@ export function useStudents() {
       const response = await studentsApi.getByClass(classCode);
 
       if (response.success) {
-        setStudents(response.data || []);
+        setStudents(
+          Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.data)
+              ? response.data.data
+              : [],
+        );
       } else {
         setError(response.message || "Erro ao carregar alunos");
       }
@@ -76,7 +88,7 @@ export function useStudents() {
 
       if (response.success) {
         setStudents((prev) =>
-          prev.map((student) => (student._id === id ? response.data : student))
+          prev.map((student) => (student._id === id ? response.data : student)),
         );
         return { success: true, data: response.data };
       } else {
@@ -147,7 +159,7 @@ export function useStudents() {
       if (response.success) {
         // optionally update local student
         setStudents((prev) =>
-          prev.map((s) => (s._id === id ? response.data : s))
+          prev.map((s) => (s._id === id ? response.data : s)),
         );
         return { success: true, data: response.data };
       } else {
@@ -171,7 +183,7 @@ export function useStudents() {
 
     if (classCode && classCode !== "all") {
       filtered = filtered.filter((student) =>
-        student.classes?.includes(classCode)
+        student.classes?.includes(classCode),
       );
     }
 
@@ -180,7 +192,7 @@ export function useStudents() {
       filtered = filtered.filter(
         (student) =>
           student.name.toLowerCase().includes(term) ||
-          student.registration.toLowerCase().includes(term)
+          student.registration.toLowerCase().includes(term),
       );
     }
 

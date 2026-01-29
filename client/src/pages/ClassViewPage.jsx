@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "../components/layout/Layout";
-import { useClasses } from "../hooks/useClasses.jsx";
+import useClasses from "../hooks/useClasses.jsx";
 
 export function ClassViewPage() {
   const { id: classCode } = useParams();

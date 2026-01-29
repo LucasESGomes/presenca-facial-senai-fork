@@ -55,6 +55,15 @@ router.patch(
 );
 
 /**
+ * Buscar todas as sessões
+ */
+router.get(
+    "/",
+    authenticateJWT(),
+    classSessionController.getAll
+);
+
+/**
  * Fechar sessão
  */
 router.patch(

@@ -9,8 +9,8 @@ import {
   FaEye,
   FaFilter,
 } from "react-icons/fa";
-import { useClasses } from "../hooks/useClasses";
-import useUsers from "../hooks/useUsers";
+import useClasses from "../hooks/useClasses";
+import { useUsers } from "../hooks/useUsers";
 import Search from "../components/ui/Search";
 
 export default function TeachersPage() {

@@ -8,7 +8,7 @@ import {
   FaEnvelope,
 } from "react-icons/fa";
 import { useStudents } from "../../hooks/useStudents";
-import { useClasses } from "../../hooks/useClasses";
+import useClasses from "../../hooks/useClasses";
 
 export default function StudentForm({
   mode: propMode,
@@ -36,7 +36,7 @@ export default function StudentForm({
   const [form, setForm] = useState({
     name: "",
     registration: "",
-    classCode: "",
+    classes: [],
     facialId: "",
     isActive: true,
   });
@@ -61,7 +61,7 @@ export default function StudentForm({
           setForm({
             name: data.name || "",
             registration: data.registration || "",
-            classCode: (data.classes && data.classes[0]) || "",
+            classes: data.classes || [],
             facialId: data.facialId || "",
             isActive: data.isActive !== undefined ? data.isActive : true,
           });
@@ -70,7 +70,7 @@ export default function StudentForm({
         setForm({
           name: propData.name || "",
           registration: propData.registration || "",
-          classCode: (propData.classes && propData.classes[0]) || "",
+          classes: propData.classes || [],
           facialId: propData.facialId || "",
           isActive: propData.isActive !== undefined ? propData.isActive : true,
         });
@@ -82,8 +82,11 @@ export default function StudentForm({
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === "classCode") {
-      setForm((p) => ({ ...p, classCode: value }));
+    if (name === "classes") {
+      // multiple select: collect selected options
+      const options = Array.from(e.target.selectedOptions || []);
+      const vals = options.map((o) => o.value);
+      setForm((p) => ({ ...p, classes: vals }));
     } else if (type === "checkbox") {
       setForm((p) => ({ ...p, [name]: checked }));
     } else {
@@ -106,8 +109,14 @@ export default function StudentForm({
       if (mode === "create") {
         if (!form.facialId) {
           setError(
-            "É necessário processar a imagem facial antes de criar o aluno."
+            "É necessário processar a imagem facial antes de criar o aluno.",
           );
+          setSubmitting(false);
+          return;
+        }
+
+        if (!Array.isArray(form.classes) || form.classes.length === 0) {
+          setError("É necessário selecionar pelo menos uma turma");
           setSubmitting(false);
           return;
         }
@@ -116,7 +125,7 @@ export default function StudentForm({
           name: form.name,
           registration: form.registration,
           facialId: form.facialId,
-          classCode: (form.classCode || "").toUpperCase(),
+          classes: form.classes.map((c) => (c || "").toUpperCase()),
         };
 
         const res = propOnSubmit
@@ -138,20 +147,24 @@ export default function StudentForm({
           setSubmitting(false);
           return;
         }
-        // Only send allowed fields for update (name and classCode)
+        // Only send allowed fields for update (name and classes as array)
         const payload = {
           name: form.name,
-          classCode: (form.classCode || "").toUpperCase(),
+          classes: Array.isArray(form.classes)
+            ? form.classes.map((c) => (c || "").toUpperCase())
+            : [],
         };
 
         const res = propOnSubmit
           ? await propOnSubmit(payload)
           : await updateStudent(id, payload);
+        console.log("Update result:", res);
         if (res.success) {
           setSuccess(true);
           await loadStudents();
           setTimeout(() => navigate("/students"), 1200);
         } else {
+          console.error("Update failed:", res.message);
           setError(res.message || "Erro ao atualizar aluno");
         }
       }
@@ -274,16 +287,19 @@ export default function StudentForm({
               </div>
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">
-                  Turma (classCode) *
+                  Turmas (classCode) *
                 </label>
                 <select
-                  name="classCode"
-                  value={form.classCode}
+                  name="classes"
+                  value={form.classes}
                   onChange={handleChange}
                   required
+                  multiple
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-colors bg-white"
                 >
-                  <option value="">Selecione a turma</option>
+                  <option value="" disabled>
+                    Selecione a(s) turma(s)
+                  </option>
                   {(availableClasses || []).map((c) => (
                     <option key={c._id || c.id || c.code} value={c.code}>
                       {c.code} {c.course ? `— ${c.course}` : ""}
@@ -339,8 +355,8 @@ export default function StudentForm({
                   {faceProcessing
                     ? "Processando..."
                     : mode === "edit"
-                    ? "Atualizar rosto"
-                    : "Processar rosto"}
+                      ? "Atualizar rosto"
+                      : "Processar rosto"}
                 </button>
                 <div className="text-sm text-gray-600">
                   {faceProcessed || form.facialId ? (

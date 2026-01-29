@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { usersApi } from "../api/users";
 
-export default function useUsers() {
+export function useUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -14,7 +14,13 @@ export default function useUsers() {
       const response = await usersApi.getAll();
 
       if (response.success) {
-        setUsers(response.data || []);
+        setUsers(
+          Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.data)
+              ? response.data.data
+              : [],
+        );
       } else {
         setError(response.message || "Erro ao carregar usuários");
       }
@@ -150,7 +156,9 @@ export default function useUsers() {
     }
   }, []);
 
-  const teachers = users.filter((u) => u.role === "professor");
+  const teachers = (Array.isArray(users) ? users : []).filter(
+    (u) => u.role === "professor",
+  );
 
   return {
     // Estado

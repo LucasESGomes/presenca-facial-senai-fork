@@ -189,6 +189,35 @@ const attendanceController = {
     getBySession: controllerWrapper(async (req, res) => {
         const { sessionId } = req.params;
         const records = await AttendanceService.getBySession(sessionId);
+
+        // Also include any pre-attendances stored for the session room
+        try {
+            const session = await ClassSessionService.getById(sessionId);
+            if (session && session.room) {
+                const preList = await PreAttendanceService.getByRoom(session.room.toString());
+
+                // enrich pre-attendances with student info and mark as pending
+                const enriched = await Promise.all(
+                    preList.map(async (p) => {
+                        const student = await StudentService.getById(p.studentId);
+                        return {
+                            // synthetic id so UI can key on it
+                            _id: `pre_${p.studentId}_${p.timestamp}`,
+                            student,
+                            status: "pre_pending",
+                            checkInTime: new Date(p.timestamp),
+                            recordedBy: null,
+                            preAttendance: true,
+                        };
+                    })
+                );
+
+                return ApiResponse.OK(res, "", [...records, ...enriched]);
+            }
+        } catch (err) {
+            console.error('Erro ao incluir pre-attendances:', err.message);
+        }
+
         return ApiResponse.OK(res, "", records);
     }),
 

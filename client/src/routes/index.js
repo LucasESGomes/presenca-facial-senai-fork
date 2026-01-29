@@ -38,13 +38,13 @@ export const                ROUTES = {
             BY_TEACHER: '/class-sessions/teacher/:id',
             LIST: '/class-sessions/list',
             CREATE: '/class-sessions/',
-            EDIT: '/class-sessions/:Id',
-            ACTIVE: '/class-sessions/:id/active',
-            REPORT: '/class-sessions/:id/report',
+            EDIT: '/class-sessions/:id',
         },
         ATTENDANCE: {
             MANUAL: '/attendance/manual',
             HISTORY: '/attendance/history',
+            CLASS_SESSION_ATTENDANCES: '/attendances/session/:id',
+            CLASS_ATTENDANCE: '/attendances/session/:id/full-report',
         },
         ROOMS: {
             LIST: '/rooms',
@@ -65,6 +65,7 @@ export const                ROUTES = {
         },
         PROFILE: '/profile',
         SETTINGS: '/settings',
+        ACCESS_REQUESTS: '/access-requests',
     },
 
     // Utilitários para construir URLs dinâmicas

@@ -27,7 +27,7 @@ router.post(
 router.post(
     "/facial",
     totemApiAuth,
-    attendanceController.markByFace
+    ...attendanceController.markByFace
 );
 
 /**
@@ -58,7 +58,7 @@ router.get(
 );
 
 // Relatório completo da sessão
-// (presentes + ausentes calculados)
+//
 router.get(
     "/session/:sessionId/full-report",
     authenticateJWT(),
