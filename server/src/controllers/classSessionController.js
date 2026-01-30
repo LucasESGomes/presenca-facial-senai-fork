@@ -8,8 +8,22 @@ const classSessionController = {
      * teacherId vem do JWT
      */
     create: controllerWrapper(async (req, res) => {
-        const teacherId = req.user.id;
-        const data = { ...req.body, teacherId };
+        let teacherId;
+        if (req.user.role !== 'professor') {
+            if (!req.body.teacher) {
+                return ApiResponse.BAD_REQUEST(res, "O ID do professor é obrigatório.");
+            } else {
+                teacherId = req.body.teacher;
+            }
+        } else {
+            teacherId = req.user.id;
+        }
+
+        let data = { ...req.body };
+        if (!data.teacherId) {
+            data.teacherId = teacherId;
+        }
+
         const session = await ClassSessionService.create(data);
         return ApiResponse.CREATED(res, "Sessão criada com sucesso.", session);
     }),
