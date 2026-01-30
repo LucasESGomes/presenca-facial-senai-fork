@@ -6,8 +6,8 @@ import Sidebar from './Sidebar';
 export default function Layout({ children }) {
     const { user } = useAuth();
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-    // Se não estiver logado, não mostra sidebar
     if (!user) {
         return (
             <div className="min-h-screen bg-gray-50">
@@ -21,17 +21,23 @@ export default function Layout({ children }) {
         );
     }
 
-    // Se estiver logado, mostra layout completo com sidebar
+    // largura da sidebar
+    const sidebarWidth = isSidebarCollapsed ? "sm:ml-20" : "sm:ml-64";
+
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Sidebar */}
+        <div className="min-h-screen bg-gray-50">
+            {/* Sidebar fixa */}
             <Sidebar
                 isMobileOpen={mobileSidebarOpen}
                 setIsMobileOpen={setMobileSidebarOpen}
+                isCollapsed={isSidebarCollapsed}
+                setIsCollapsed={setIsSidebarCollapsed}
             />
 
-            {/* Conteúdo principal */}
-            <div className="flex-1 flex flex-col">
+            {/* Conteúdo principal EMPURRADO */}
+            <div
+                className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${sidebarWidth}`}
+            >
                 <Header onMobileMenuClick={() => setMobileSidebarOpen(true)} />
 
                 <main className="flex-1 py-6">

@@ -148,28 +148,64 @@ class AttendanceService extends BaseService {
         const classData = await ClassService.getById(session.class);
         if (!classData) throw new NotFoundError("Turma não encontrada.");
 
-        const students = await Student.find({
-            classes: classData.code.toString().toUpperCase(),
-        });
-
-        const attendances = await Attendance.find({
-            session: session._id,
-        });
-
-        const presentIds = new Set(
-            attendances.map(a => a.student.toString())
+        // Alunos da turma
+        const students = await Student.find(
+            { classes: classData.code.toString().toUpperCase() },
+            { name: 1, registration: 1 } // 👈 projection
         );
 
-        const absentees = students.filter(
-            s => !presentIds.has(s._id.toString())
+        // Presenças da sessão
+        const attendances = await Attendance.find(
+            { session: session._id }
+        ).populate("student", "name registration");
+
+        // PRESENTES (payload enxuto)
+        let presentes = attendances.filter(att => att.status === "presente").map(att => ({
+            nome: att.student.name,
+            matricula: att.student.registration,
+            horario: att.createdAt,
+            id: att.student._id
+        }));
+
+        const atrasados = attendances.filter(att => att.status === "atrasado").map(att => ({
+            nome: att.student.name,
+            matricula: att.student.registration,
+            horario: att.createdAt,
+            id: att.student._id
+        }));
+
+
+        // IDs dos alunos presentes
+        const presentStudentIds = new Set(
+            attendances.map(att => att.student._id.toString())
         );
+
+        const lateStudentIds = new Set(
+            attendances.filter(att => att.status === "atrasado").map(att => att.student._id.toString())
+        );
+
+        // AUSENTES (alunos sem presença)
+        const ausentes = students
+            .filter(student => !presentStudentIds.has(student._id.toString()) && !lateStudentIds.has(student._id.toString()))
+            .map(student => ({
+                nome: student.name,
+                matricula: student.registration,
+                id: student._id
+            }));
 
         return {
-            session,
-            presentes: attendances,
-            ausentes: absentees,
+            session: {
+                _id: session._id,
+                name: session.name,
+                date: session.date,
+                status: session.status,
+            },
+            presentes,
+            ausentes,
+            atrasados,
         };
     }
+
 
     /**
      * =========================================================

@@ -81,7 +81,7 @@ export default function AttendancePage() {
           <FaArrowLeft /> Voltar
         </button>
         <h2 className="text-2xl font-bold text-gray-900">
-          Sessões de {selectedClass?.code}
+          Aluas de {selectedClass?.code}
         </h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

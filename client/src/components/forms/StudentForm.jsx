@@ -3,24 +3,33 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   FaCheck,
   FaTimes,
+  FaCamera,
+  FaUserGraduate,
+  FaIdCard,
+  FaUsers,
+  FaUserCheck,
   FaUser,
-  FaIdBadge,
-  FaEnvelope,
+  FaArrowLeft,
+  FaSave,
+  FaInfoCircle
 } from "react-icons/fa";
+import { motion } from "framer-motion";
+
 import { useStudents } from "../../hooks/useStudents";
 import useClasses from "../../hooks/useClasses";
+import { normalizeClasses } from "../../utils/normalizeClasses";
+
+import FaceCapture from "../students/FaceCapture";
+import StudentClassesSelect from "../students/StudentClassesSelect";
 
 export default function StudentForm({
   mode: propMode,
   initialData: propData,
-  onSubmit: propOnSubmit,
 }) {
   const navigate = useNavigate();
-  const params = useParams();
-  const routeId = params.id;
+  const { id: routeId } = useParams();
 
   const mode = propMode || (routeId ? "edit" : "create");
-  const [initialData, setInitialData] = useState(propData || null);
 
   const {
     createStudent,
@@ -28,70 +37,120 @@ export default function StudentForm({
     getStudent,
     loadStudents,
     encodeFace,
-    validateImage,
     updateFacialId,
   } = useStudents();
+
   const { classes: availableClasses, loadClasses } = useClasses();
 
   const [form, setForm] = useState({
     name: "",
     registration: "",
     classes: [],
-    facialId: "",
+    facialEmbedding: null,
     isActive: true,
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [showFaceCapture, setShowFaceCapture] = useState(false);
+  const [faceProcessing, setFaceProcessing] = useState(false);
+  const [faceInfo, setFaceInfo] = useState(null);
+
+  /* ───────────────── effects ───────────────── */
 
   useEffect(() => {
     loadClasses();
   }, [loadClasses]);
 
-  // Se estiver em modo edit, buscar dados do aluno
   useEffect(() => {
     let mounted = true;
-    async function load() {
+
+    async function loadStudent() {
       if (mode === "edit" && routeId && !propData) {
         const res = await getStudent(routeId);
         if (res.success && mounted) {
-          setInitialData(res.data);
-          const data = res.data;
+          const d = res.data;
+
           setForm({
-            name: data.name || "",
-            registration: data.registration || "",
-            classes: data.classes || [],
-            facialId: data.facialId || "",
-            isActive: data.isActive !== undefined ? data.isActive : true,
+            name: d.name || "",
+            registration: d.registration || "",
+            classes: d.classes || [],
+            facialEmbedding: d.facialEmbedding || null,
+            isActive: d.isActive ?? true,
           });
+
+          if (d.facialEmbedding?.nonce) {
+            setFaceInfo({
+              status: "processed",
+              nonce: d.facialEmbedding.nonce
+            });
+          }
         }
-      } else if (propData) {
-        setForm({
-          name: propData.name || "",
-          registration: propData.registration || "",
-          classes: propData.classes || [],
-          facialId: propData.facialId || "",
-          isActive: propData.isActive !== undefined ? propData.isActive : true,
-        });
       }
     }
-    load();
+
+    loadStudent();
     return () => (mounted = false);
   }, [mode, routeId, propData, getStudent]);
 
+  /* ───────────────── handlers ───────────────── */
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === "classes") {
-      // multiple select: collect selected options
-      const options = Array.from(e.target.selectedOptions || []);
-      const vals = options.map((o) => o.value);
-      setForm((p) => ({ ...p, classes: vals }));
-    } else if (type === "checkbox") {
-      setForm((p) => ({ ...p, [name]: checked }));
-    } else {
-      setForm((p) => ({ ...p, [name]: value }));
+    setForm((p) => ({
+      ...p,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleClassesChange = (values) => {
+    setForm((p) => ({ ...p, classes: values }));
+  };
+
+  const handleFaceCapture = async (blob) => {
+    setError(null);
+    setFaceProcessing(true);
+
+    try {
+      const res = await encodeFace(blob);
+      if (!res.success) throw new Error(res.message);
+
+      const facialEmbedding = {
+        embedding: res.data.embedding,
+        nonce: res.data.nonce,
+      };
+      
+      if (mode === "create") {
+        setForm((p) => ({
+          ...p,
+          facialEmbedding,
+        }));
+      } else {
+        const id = routeId;
+        await updateFacialId(id, { facialEmbedding });
+      }
+
+      setFaceInfo({
+        status: "processed",
+        nonce: facialEmbedding.nonce,
+      });
+
+      setShowFaceCapture(false);
+    } catch (err) {
+      setError(err.message || "Erro ao processar rosto");
+    } finally {
+      setFaceProcessing(false);
     }
+  };
+
+  const handleRemoveFacial = () => {
+    setForm((p) => ({
+      ...p,
+      facialEmbedding: null,
+    }));
+    setFaceInfo(null);
   };
 
   const handleSubmit = async (e) => {
@@ -101,305 +160,418 @@ export default function StudentForm({
 
     try {
       if (!form.name.trim() || !form.registration.trim()) {
-        setError("Nome e matrícula são obrigatórios");
-        setSubmitting(false);
-        return;
+        throw new Error("Nome e matrícula são obrigatórios");
       }
+
+      if (!form.classes.length) {
+        throw new Error("Selecione pelo menos uma turma");
+      }
+
+      const payload = {
+        name: form.name,
+        registration: form.registration,
+        classes: normalizeClasses(form.classes),
+        isActive: form.isActive,
+        ...(form.facialEmbedding && { facialEmbedding: form.facialEmbedding }),
+      };
 
       if (mode === "create") {
-        if (!form.facialId) {
-          setError(
-            "É necessário processar a imagem facial antes de criar o aluno.",
-          );
-          setSubmitting(false);
-          return;
-        }
-
-        if (!Array.isArray(form.classes) || form.classes.length === 0) {
-          setError("É necessário selecionar pelo menos uma turma");
-          setSubmitting(false);
-          return;
-        }
-
-        const payload = {
-          name: form.name,
-          registration: form.registration,
-          facialId: form.facialId,
-          classes: form.classes.map((c) => (c || "").toUpperCase()),
-        };
-
-        const res = propOnSubmit
-          ? await propOnSubmit(payload)
-          : await createStudent(payload);
-        if (res.success) {
-          setSuccess(true);
-          // after create, reload students list and navigate
-          await loadStudents();
-          setTimeout(() => navigate("/students"), 1200);
-        } else {
-          setError(res.message || "Erro ao criar aluno");
-        }
+        await createStudent(payload);
       } else {
-        const id =
-          routeId || (initialData && (initialData._id || initialData.id));
-        if (!id) {
-          setError("ID do aluno não encontrado para edição");
-          setSubmitting(false);
-          return;
-        }
-        // Only send allowed fields for update (name and classes as array)
-        const payload = {
-          name: form.name,
-          classes: Array.isArray(form.classes)
-            ? form.classes.map((c) => (c || "").toUpperCase())
-            : [],
-        };
-
-        const res = propOnSubmit
-          ? await propOnSubmit(payload)
-          : await updateStudent(id, payload);
-        console.log("Update result:", res);
-        if (res.success) {
-          setSuccess(true);
-          await loadStudents();
-          setTimeout(() => navigate("/students"), 1200);
-        } else {
-          console.error("Update failed:", res.message);
-          setError(res.message || "Erro ao atualizar aluno");
-        }
+        await updateStudent(routeId, payload);
       }
+
+      setSuccess(true);
+      await loadStudents();
+      setTimeout(() => navigate("/students"), 1200);
     } catch (err) {
-      setError(err.message || "Erro no envio");
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Face handling
-  const [faceFile, setFaceFile] = useState(null);
-  const [faceProcessing, setFaceProcessing] = useState(false);
-  const [faceProcessed, setFaceProcessed] = useState(false);
-
-  const handleFaceSelect = (e) => {
-    const file = e.target.files?.[0];
-    setFaceFile(file || null);
-  };
-
-  const handleProcessFace = async () => {
-    setError(null);
-    if (!faceFile) return setError("Selecione uma imagem");
-    const valid = validateImage(faceFile);
-    if (!valid.valid) return setError(valid.message || "Imagem inválida");
-
-    try {
-      setFaceProcessing(true);
-      const res = await encodeFace(faceFile);
-      if (res.success) {
-        // For create, store facialId directly; for edit, call updateFacialId
-        if (mode === "create") {
-          setForm((p) => ({ ...p, facialId: res.data }));
-        } else {
-          const id =
-            routeId || (initialData && (initialData._id || initialData.id));
-          if (id) {
-            const upd = await updateFacialId(id, res.data);
-            if (!upd.success) {
-              setError(upd.message || "Erro ao atualizar facialId");
-            }
-          }
-        }
-        setFaceProcessed(true);
-      } else {
-        setError(res.message || "Erro ao processar face");
-      }
-    } catch (err) {
-      setError(err.message || "Erro ao processar imagem");
-    } finally {
-      setFaceProcessing(false);
-    }
-  };
+  /* ───────────────── render ───────────────── */
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          {mode === "edit" ? "Editar Aluno" : "Cadastrar Novo Aluno"}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {mode === "edit"
-            ? "Atualize os dados do aluno"
-            : "Preencha os dados para cadastrar um novo aluno"}
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate("/students")}
+            className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          >
+            <FaArrowLeft />
+            <span>Voltar para Alunos</span>
+          </button>
 
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2">
-          <FaCheck size={20} />
-          Aluno salvo com sucesso! Redirecionando...
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2">
-          <FaTimes size={20} />
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-red-600 to-red-700 px-8 py-6">
-            <h2 className="text-xl font-bold text-white">
-              Informações do Aluno
-            </h2>
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="p-3 bg-gradient-to-r from-red-600 to-red-700 rounded-xl">
+              <FaUserGraduate className="text-white text-2xl" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {mode === "edit" ? "Editar Aluno" : "Cadastrar Novo Aluno"}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {mode === "edit"
+                  ? "Atualize os dados do aluno no sistema"
+                  : "Preencha os dados abaixo para cadastrar um novo aluno"}
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div className="p-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-colors"
-                  placeholder="Ex: João Silva"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Matrícula *
-                </label>
-                <input
-                  type="text"
-                  name="registration"
-                  value={form.registration}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-colors"
-                  placeholder="Ex: 2025001"
-                />
+        {/* Messages */}
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg shadow-sm"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-full">
+                <FaCheck className="text-green-600" />
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Turmas (classCode) *
-                </label>
-                <select
-                  name="classes"
-                  value={form.classes}
-                  onChange={handleChange}
-                  required
-                  multiple
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-colors bg-white"
-                >
-                  <option value="" disabled>
-                    Selecione a(s) turma(s)
-                  </option>
-                  {(availableClasses || []).map((c) => (
-                    <option key={c._id || c.id || c.code} value={c.code}>
-                      {c.code} {c.course ? `— ${c.course}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <p className="font-medium text-green-800">Aluno salvo com sucesso!</p>
+                <p className="text-sm text-green-700">Redirecionando para a lista de alunos...</p>
               </div>
             </div>
+          </motion.div>
+        )}
 
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="isActive"
-                name="isActive"
-                checked={form.isActive}
-                onChange={handleChange}
-                className="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
-              />
-              <label
-                htmlFor="isActive"
-                className="flex-1 text-gray-700 font-medium cursor-pointer"
-              >
-                Aluno Ativo
-              </label>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  form.isActive
-                    ? "bg-green-100 text-green-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {form.isActive ? "Ativo" : "Inativo"}
-              </span>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500 rounded-lg shadow-sm"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <FaTimes className="text-red-600" />
+              </div>
+              <div>
+                <p className="font-medium text-red-800">Erro ao processar</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
+          </motion.div>
+        )}
 
-            {/* Facial image */}
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <label className="block text-gray-700 font-semibold mb-2">
-                Imagem facial
-              </label>
-              <div className="flex gap-3 items-center">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFaceSelect}
-                />
-                <button
-                  type="button"
-                  onClick={handleProcessFace}
-                  disabled={faceProcessing}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50"
-                >
-                  {faceProcessing
-                    ? "Processando..."
-                    : mode === "edit"
-                      ? "Atualizar rosto"
-                      : "Processar rosto"}
-                </button>
-                <div className="text-sm text-gray-600">
-                  {faceProcessed || form.facialId ? (
-                    <span className="text-green-600 font-medium">
-                      Rosto processado
-                    </span>
-                  ) : (
-                    <span>Nenhum rosto processado</span>
-                  )}
+        <motion.form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+            {/* Header do Form */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <FaUser className="text-white text-xl" />
+                  <h2 className="text-xl font-bold text-white">
+                    Informações do Aluno
+                  </h2>
+                </div>
+                <div className="text-red-100 text-sm bg-red-800/30 px-3 py-1 rounded-full">
+                  {mode === "edit" ? "Modo Edição" : "Novo Cadastro"}
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4 pt-6">
-              <button
-                type="button"
-                onClick={() => navigate("/students")}
-                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors duration-200"
-              >
-                Cancelar
-              </button>
+            <div className="p-8 space-y-8">
+              {/* Seção: Dados Pessoais */}
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <FaUser className="text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">Dados Pessoais</h3>
+                </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Enviando...
-                  </>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Nome */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <span>Nome Completo</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <FaUser />
+                      </div>
+                      <input
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        placeholder="Digite o nome completo do aluno"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">Nome completo conforme documento oficial</p>
+                  </div>
+
+                  {/* Matrícula */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <span>Número de Matrícula</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <FaIdCard />
+                      </div>
+                      <input
+                        name="registration"
+                        value={form.registration}
+                        onChange={handleChange}
+                        placeholder="Ex: 20241023001"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">Matrícula única do aluno no sistema</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção: Turmas */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <FaUsers className="text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">Turmas do Aluno</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center space-x-2">
+                    <span>Selecionar Turmas</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <StudentClassesSelect
+                    value={form.classes}
+                    classes={availableClasses}
+                    onChange={handleClassesChange}
+                  />
+                  <p className="text-xs text-gray-500">Selecione uma ou mais turmas para o aluno</p>
+                </div>
+              </div>
+
+              {/* Seção: Status */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <FaUserCheck className="text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">Status do Aluno</h3>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <label className="flex items-center space-x-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={form.isActive}
+                        onChange={handleChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-6 bg-gray-300 rounded-full peer peer-checked:bg-red-600 transition-colors"></div>
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-800 group-hover:text-gray-900 transition-colors">
+                        Aluno Ativo
+                      </span>
+                      <p className="text-sm text-gray-600">
+                        {form.isActive
+                          ? "O aluno está ativo e pode ser marcado em presenças"
+                          : "O aluno está inativo e não aparecerá nas listas de presença"}
+                      </p>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${form.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {form.isActive ? "ATIVO" : "INATIVO"}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Seção: Reconhecimento Facial */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <FaCamera className="text-red-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-800">Reconhecimento Facial</h3>
+                    <p className="text-sm text-gray-600">
+                      Captura opcional para presenças automáticas via câmera
+                    </p>
+                  </div>
+                </div>
+
+                {/* Informação sobre facial opcional */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-start space-x-3">
+                    <FaInfoCircle className="text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-blue-800">
+                        <span className="font-medium">O reconhecimento facial é opcional.</span> O aluno pode ser
+                        cadastrado sem ele e depois ter presenças registradas manualmente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {showFaceCapture ? (
+                  <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                    <FaceCapture
+                      onCapture={handleFaceCapture}
+                      disabled={faceProcessing}
+                    />
+                    {faceProcessing && (
+                      <div className="mt-4 text-center">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mb-2"></div>
+                        <p className="text-sm text-gray-600">Processando imagem facial...</p>
+                      </div>
+                    )}
+                    <div className="mt-4 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowFaceCapture(false)}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      >
+                        Cancelar captura
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <FaCheck size={18} />
-                    {mode === "edit" ? "Salvar Alterações" : "Criar Aluno"}
-                  </>
+                  <div className={`p-6 rounded-xl border-2 ${form.facialId ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'} transition-all`}>
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-3 rounded-full ${form.facialId ? 'bg-green-100' : 'bg-gray-100'}`}>
+                          <FaCamera className={`text-lg ${form.facialId ? 'text-green-600' : 'text-gray-500'}`} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {form.facialId ? "Rosto Processado" : "Sem Reconhecimento Facial"}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {form.facialId
+                              ? "O aluno pode ser reconhecido via câmera"
+                              : "O aluno será registrado apenas manualmente"}
+                          </p>
+                          {form.facialId && faceInfo?.nonce && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              ID facial: {faceInfo.nonce.substring(0, 16)}...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {form.facialId ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setShowFaceCapture(true)}
+                              className="px-4 py-2 text-green-700 hover:text-green-900 font-medium rounded-lg border border-green-300 hover:border-green-400 bg-white hover:bg-green-50 transition-colors"
+                            >
+                              Recapturar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemoveFacial}
+                              className="px-4 py-2 text-red-600 hover:text-red-800 font-medium rounded-lg border border-red-200 hover:border-red-300 bg-white hover:bg-red-50 transition-colors"
+                            >
+                              Remover
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowFaceCapture(true)}
+                            className="px-6 py-3 rounded-lg font-medium transition-all bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <FaCamera />
+                              <span>Capturar Rosto</span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
+
+              {/* Seção: Ações */}
+              <div className="pt-8 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/students")}
+                    className="flex-1 px-6 py-3.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <FaArrowLeft />
+                    <span>Cancelar</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={`flex-1 px-6 py-3.5 rounded-lg font-medium transition-all flex items-center justify-center space-x-2 ${submitting
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl'
+                      }`}
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Processando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaSave />
+                        <span>{mode === "edit" ? "Salvar Alterações" : "Cadastrar Aluno"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Informações adicionais */}
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                    <div className="flex items-start space-x-2">
+                      <div className="p-1 bg-red-100 rounded">
+                        <FaCheck className="text-red-600 text-xs" />
+                      </div>
+                      <span>Campos marcados com * são obrigatórios</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <div className="p-1 bg-red-100 rounded">
+                        <FaCamera className="text-red-600 text-xs" />
+                      </div>
+                      <span>Reconhecimento facial é opcional</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <div className="p-1 bg-red-100 rounded">
+                        <FaUsers className="text-red-600 text-xs" />
+                      </div>
+                      <span>Aluno pode estar em múltiplas turmas</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </motion.form>
+      </div>
     </div>
   );
 }

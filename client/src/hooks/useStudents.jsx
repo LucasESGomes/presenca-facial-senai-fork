@@ -133,7 +133,7 @@ export function useStudents() {
       setLoading(true);
       setError(null);
       const data = await studentsApi.encodeFace(imageFile);
-      return { success: true, data: data.embedding };
+      return { success: true, data };
     } catch (err) {
       const message =
         err.response?.data?.message || "Erro ao processar imagem facial";

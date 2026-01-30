@@ -55,7 +55,7 @@ export default function LoginPage() {
             <OVLogo />
           </div>
 
-          <img src="facial_illustration.svg" className="w-[80%] mt-20" />
+          <img src="/facial_illustration.svg" className="w-[80%] mt-20" />
         </div>
       </div>
 

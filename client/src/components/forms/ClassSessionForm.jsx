@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import useClassesSessions from "../../hooks/useClassesSessions";
 import { useUsers } from "../../hooks/useUsers";
 import { useRooms } from "../../hooks/useRooms";
+import useAttendances from "../../hooks/useAttendances";
 import useClasses from "../../hooks/useClasses";
+import Toast from "../ui/Toast";
+import Modal from "../ui/Modal"; // Importar o Modal
+import useModal from "../../hooks/useModal"; // Importar o hook useModal
+
 import {
   FaCalendarAlt,
   FaChalkboardTeacher,
@@ -15,6 +20,8 @@ import {
   FaPlus,
   FaBook,
 } from "react-icons/fa";
+import { Navigate } from "react-router-dom";
+
 
 export default function ClassSessionForm({
   mode = "create",
@@ -26,10 +33,16 @@ export default function ClassSessionForm({
   const { teachers, loadUsers } = useUsers();
   const { rooms, loadRooms } = useRooms();
   const { classes, loadClasses } = useClasses();
+  const { getFullReportBySession } = useAttendances();
+
+  // Estado do Toast
+  const [message, setMessage] = useState({ text: "", type: "" });
+
+  // Usar hook do Modal
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   const [form, setForm] = useState({
     name: "",
-    date: "",
     notes: "",
     classId: fixedClassId || "",
     room: "",
@@ -52,40 +65,42 @@ export default function ClassSessionForm({
       setForm({
         name: initialData.name || "",
         classId: initialData.classId || "",
-        date: initialData.date ? initialData.date.substring(0, 16) : "",
         room: initialData.room || "",
         notes: initialData.notes || "",
         teacher: initialData.teacher || "",
+        isClosed: initialData.status === "closed" || initialData.isClosed || false,
       });
     }
   }, [mode, initialData]);
 
-  function handleChange(e) {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  }
+  // Função para mostrar Toast
+  const showToast = (text, type = "info") => {
+    setMessage({ text, type });
+  };
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  // Função para mostrar modal de confirmação antes de salvar
+  const showSaveConfirmation = (payload, isEdit) => {
+    showModal({
+      title: isEdit ? "Salvar Alterações" : "Criar Sessão",
+      message: isEdit
+        ? "Deseja salvar as alterações nesta sessão?"
+        : "Deseja criar esta nova sessão de aula?",
+      type: "info",
+      confirmText: isEdit ? "Salvar" : "Criar",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        await performSubmit(payload, isEdit);
+      }
+    });
+  };
+
+  // Função que realiza o submit após confirmação
+  const performSubmit = async (payload, isEdit) => {
     setSubmitting(true);
-
-    // 🔹 Payload no formato do backend
-    const payload = {
-      name: form.name,
-      date: new Date(form.date).toISOString(),
-      notes: form.notes,
-      classId: form.classId,
-      room: form.room,
-      teacher: form.teacher,
-      status: form.isClosed ? "closed" : "active",
-    };
 
     try {
       let res;
-      if (mode === "edit") {
+      if (isEdit) {
         const id = initialData._id || initialData.id;
         res = onSubmit
           ? await onSubmit(payload)
@@ -98,12 +113,79 @@ export default function ClassSessionForm({
         throw new Error(res?.message || "Erro ao salvar sessão");
       }
 
-      alert(mode === "edit" ? "Sessão atualizada" : "Sessão criada");
+      // Mostrar toast de sucesso
+      showToast(
+        isEdit ? "Sessão atualizada com sucesso!" : "Sessão criada com sucesso!",
+        "success"
+      );  
+
+      // Navegar para página de relatório completo após criação
+
+      window.location.href = `/class-sessions/${res.data._id}`;
+
+      // Limpar formulário se for criação
+      if (!isEdit && !onSubmit) {
+        setForm({
+          name: "",
+          notes: "",
+          classId: fixedClassId || "",
+          room: "",
+          teacher: "",
+          isClosed: false,
+        });
+      }
+
     } catch (err) {
-      alert(err.message || "Erro ao salvar");
+      showToast(err.message || "Erro ao salvar a sessão", "error");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  function handleChange(e) {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    // Validar campos obrigatórios
+    if (!form.name.trim()) {
+      showToast("O título da aula é obrigatório", "warning");
+      return;
+    }
+
+    if (!form.classId) {
+      showToast("Selecione uma turma", "warning");
+      return;
+    }
+
+    if (!form.room) {
+      showToast("Selecione uma sala", "warning");
+      return;
+    }
+
+    if (!form.teacher) {
+      showToast("Selecione um professor", "warning");
+      return;
+    }
+
+    // 🔹 Payload no formato do backend
+    const payload = {
+      name: form.name,
+      notes: form.notes,
+      classId: form.classId,
+      room: form.room,
+      teacher: form.teacher,
+      status: form.isClosed ? "closed" : "active",
+    };
+
+    // Mostrar modal de confirmação antes de salvar
+    showSaveConfirmation(payload, mode === "edit");
   }
 
   return (
@@ -148,24 +230,6 @@ export default function ClassSessionForm({
               />
             </div>
 
-            {/* DATA */}
-            <div>
-              <label className="block mb-2">
-                <div className="flex items-center text-gray-700 font-medium">
-                  <FaCalendarAlt className="text-red-600 mr-2" />
-                  Data e Hora *
-                </div>
-              </label>
-              <input
-                type="datetime-local"
-                name="date"
-                value={form.date}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-              />
-            </div>
-
             {/* TURMA */}
             <div>
               <label className="block mb-2">
@@ -180,6 +244,7 @@ export default function ClassSessionForm({
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+                disabled={!!fixedClassId}
               >
                 <option value="">Selecione a turma</option>
                 {classes.map((cls) => (
@@ -188,6 +253,11 @@ export default function ClassSessionForm({
                   </option>
                 ))}
               </select>
+              {fixedClassId && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Turma fixada pelo contexto da página
+                </p>
+              )}
             </div>
 
             {/* SALA */}
@@ -283,14 +353,12 @@ export default function ClassSessionForm({
                     className="sr-only"
                   />
                   <div
-                    className={`block w-12 h-6 rounded-full transition-colors ${
-                      form.isClosed ? "bg-red-600" : "bg-green-600"
-                    }`}
+                    className={`block w-12 h-6 rounded-full transition-colors ${form.isClosed ? "bg-red-600" : "bg-green-600"
+                      }`}
                   ></div>
                   <div
-                    className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${
-                      form.isClosed ? "transform translate-x-6" : ""
-                    }`}
+                    className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${form.isClosed ? "transform translate-x-6" : ""
+                      }`}
                   ></div>
                 </div>
               </label>
@@ -319,7 +387,7 @@ export default function ClassSessionForm({
                   ) : (
                     <>
                       <FaPlus className="mr-2" />
-                      Criar Sessão
+                      Criar aula
                     </>
                   )}
                 </>
@@ -339,6 +407,27 @@ export default function ClassSessionForm({
           </div>
         </form>
       </div>
+
+      {/* Toast */}
+      <Toast
+        message={message.text}
+        type={message.type}
+        onClose={() => setMessage({ text: "", type: "" })}
+      />
+
+      {/* Modal */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
+      />
     </div>
   );
 }

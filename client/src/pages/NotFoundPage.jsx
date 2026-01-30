@@ -32,14 +32,6 @@ export default function NotFoundPage() {
 
                 {/* Ações */}
                 <div className="space-y-3">
-                    <Link
-                        to={isAuthenticated ? ROUTES.PRIVATE.DASHBOARD : ROUTES.PUBLIC.LOGIN}
-                        className="block w-full px-4 py-3 bg-senai-red text-white font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
-                    >
-                        <FiHome className="mr-2" />
-                        {isAuthenticated ? 'Voltar ao Dashboard' : 'Ir para Login'}
-                    </Link>
-
                     <button
                         onClick={() => window.history.back()}
                         className="block w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"

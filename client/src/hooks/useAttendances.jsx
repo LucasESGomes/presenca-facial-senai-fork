@@ -134,6 +134,26 @@ export default function useAttendances() {
     }
   }, []);
 
+  // Deletar presença
+
+  const deleteAttendance = useCallback(async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await attendancesApi.delete(id);
+
+      setAttendances((prev) => prev.filter((a) => a._id !== id && a.id !== id));
+      return { success: true };
+      
+    } catch (err) {
+      const message = err.message || "Erro ao deletar presença";
+      setError(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Atualizar presença
   const update = useCallback(async (id, attendanceData) => {
     try {
@@ -164,6 +184,7 @@ export default function useAttendances() {
     loading,
     error,
     createManual,
+    deleteAttendance,
     createFacial,
     getBySession,
     getById,

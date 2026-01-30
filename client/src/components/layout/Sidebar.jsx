@@ -23,18 +23,15 @@ import {
     FiCamera
 } from 'react-icons/fi';
 
-export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
+export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, setIsCollapsed }) {
     const location = useLocation();
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const { user, logout } = useAuth();
 
     // Links comuns para professores
     const professorLinks = [
-        { path: ROUTES.PRIVATE.DASHBOARD, label: 'Dashboard', icon: <FiHome className="text-xl" />, require: 'both' },
         { path: ROUTES.PRIVATE.CLASSES.LIST, label: 'Minhas Turmas', icon: <FiBook className="text-xl" />, require: 'both' },
         { path: ROUTES.PRIVATE.STUDENTS.LIST, label: 'Alunos', icon: <FiUsers className="text-xl" />, require: 'both' },
-        { path: ROUTES.PRIVATE.SESSIONS.LIST, label: 'Sessões', icon: <FiCalendar className="text-xl" />, require: 'both' },
-        { path: ROUTES.PRIVATE.ATTENDANCE.MANUAL, label: 'Presença', icon: <FiClipboard className="text-xl" />, require: 'both' },
+        { path: ROUTES.PRIVATE.SESSIONS.LIST, label: 'Aulas', icon: <FiCalendar className="text-xl" />, require: 'both' },
         { path: ROUTES.PRIVATE.REPORTS.MAIN, label: 'Relatórios', icon: <FiFileText className="text-xl" />, require: 'both' },
     ];
 
@@ -134,19 +131,19 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
         {/* Sidebar desktop (inalterada) */}
         <aside
           className={`
-                    bg-gradient-to-b from-senai-red via-red-600 to-red-700 text-white flex-col transition-all duration-300 ease-in-out relative
-                    hidden sm:flex ${isCollapsed ? "w-20" : "w-64"}
+                    bg-gradient-to-b from-senai-red via-red-600 to-red-700 text-white h-screen flex-col transition-all duration-300 ease-in-out fixed top-0 left-0
+                    hidden z-40 sm:flex ${isCollapsed ? "w-20" : "w-64"}
                 `}
         >
           {/* Logo + Toggle */}
           <div className="p-4 border-b border-red-500 flex items-center justify-between">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
-                <img src="senai_type.png" className="w-[50%]" />
+                <img src="/senai_type.png" className="w-[50%]" />
               </div>
             ) : (
               <div className="mx-auto flex items-center justify-center">
-                <img src="senai_s.png" className="w-[80%]" />
+                <img src="/senai_s.png" className="w-[80%]" />
               </div>
             )}
 
@@ -215,11 +212,11 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
             )}
 
             {/* OV Logo - desktop */}
-            <div className={`flex justify-center ${isCollapsed ? "px-2" : ""}`}>
+            <div className={`flex justify-start gap-6 items-center ${isCollapsed ? "px-2" : ""}`}>
               <OVLogo className={`${isCollapsed ? "w-8 h-8" : "w-10 h-10"}`} />
               {!isCollapsed && (
                 <p className="text-xs text-red-300 text-center mt-2">
-                  Desenvolvido por Otávio Vinicius
+                  por Otávio Vinicius
                 </p>
               )}
             </div>
@@ -240,7 +237,7 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
               {/* Logo + Toggle mobile */}
               <div className="p-4 border-b border-red-500 flex items-center justify-between">
                 <div className="flex items-center justify-center">
-                  <img src="senai_type.png" className="w-[50%]" />
+                  <img src="/senai_type.png" className="w-[50%]" />
                 </div>
 
                 {/* Botão fechar no mobile */}

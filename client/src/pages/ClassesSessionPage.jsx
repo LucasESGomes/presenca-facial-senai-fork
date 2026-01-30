@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import useClassesSessions from "../hooks/useClassesSessions";
 import { useUsers } from "../hooks/useUsers";
+import Toast from "../components/ui/Toast";
 import useClasses from "../hooks/useClasses";
 import {
   FaCalendarAlt,
@@ -32,7 +33,7 @@ export default function ClassesSession() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  const isByTeacher = pathname.includes("/teachers/");
+  const isByTeacher = pathname.includes("/teacher/");
 
   const {
     sessions,
@@ -48,7 +49,7 @@ export default function ClassesSession() {
 
   const { teachers, loadUsers } = useUsers();
   const { classes, loadClasses } = useClasses();
-
+  
   useEffect(() => {
     if (!id) {
       loadUsers();
@@ -60,6 +61,7 @@ export default function ClassesSession() {
     if (!id) return;
 
     if (isByTeacher) {
+      console.log("Loading by teacher");
       loadByTeacher(id);
     } else {
       loadByClass(id);
@@ -83,6 +85,8 @@ export default function ClassesSession() {
     setFiltered(res);
   }
 
+  const [message, setMessage] = useState({text: "", type: ""});
+
   async function handleDelete(sessionId) {
     if (
       !window.confirm(
@@ -104,10 +108,10 @@ export default function ClassesSession() {
           await loadByClass(id);
         }
       } else {
-        alert(res?.message || "Erro ao fechar/reabrir sessão");
+        setMessage({text: res?.message || "Erro ao fechar/reabrir sessão", type: "error"});
       }
     } catch (err) {
-      alert(err.message || "Erro ao fechar/reabrir sessão");
+      setMessage({text: err.message || "Erro ao fechar/reabrir sessão", type: "error"});
     }
   }
 
@@ -123,10 +127,10 @@ export default function ClassesSession() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 flex items-center">
             <FaCalendarAlt className="text-red-600 mr-3" />
-            Sessões de Aula
+            Aulas
           </h1>
           <p className="text-gray-600 mt-2">
-            Gerencie as sessões de aula por turma ou professor
+            Gerencie as aula por turma ou professor
           </p>
         </div>
 
@@ -137,7 +141,7 @@ export default function ClassesSession() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
                   <FaUsers className="text-blue-600 mr-2" />
-                  Sessões por Turma
+                  Aulas por Turma
                 </h2>
                 <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
                   {classes.length} turmas
@@ -164,7 +168,7 @@ export default function ClassesSession() {
                           </div>
                           <div>
                             <h3 className="font-bold text-gray-800 text-lg">
-                              {cls.name || "Turma sem nome"}
+                              {cls.course || "Turma sem nome"}
                             </h3>
                             <p className="text-gray-600 text-sm mt-1">
                               {cls.code || "Sem código"}
@@ -173,7 +177,7 @@ export default function ClassesSession() {
                         </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <FaClock className="mr-2" />
-                          <span>Clique para ver sessões</span>
+                          <span>Clique para ver Aulas</span>
                         </div>
                       </div>
                     </Link>
@@ -187,7 +191,7 @@ export default function ClassesSession() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
                   <FaChalkboardTeacher className="text-green-600 mr-2" />
-                  Sessões por Professor
+                  Aulas por Professor
                 </h2>
                 <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
                   {teachers.length} professores
@@ -201,7 +205,11 @@ export default function ClassesSession() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {
+                    console.log("Teachers:", teachers)
+                  }
                   {teachers.map((t) => (
+                    
                     <Link
                       key={t._id}
                       to={`/class-sessions/teacher/${t._id}`}
@@ -223,7 +231,7 @@ export default function ClassesSession() {
                         </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <FaCalendarAlt className="mr-2" />
-                          <span>Clique para ver sessões</span>
+                          <span>Clique para ver Aulas</span>
                         </div>
                       </div>
                     </Link>
@@ -249,17 +257,17 @@ export default function ClassesSession() {
                   </button>
                   <h2 className="text-2xl font-bold text-gray-800 flex items-center">
                     <FaListAlt className="text-red-600 mr-3" />
-                    {isByTeacher ? "Sessões do Professor" : "Sessões da Turma"}
+                    {isByTeacher ? "Aulas do Professor" : "Aulas da Turma"}
                   </h2>
                   <p className="text-gray-600 mt-2">
                     {isByTeacher
-                      ? "Visualize e gerencie todas as sessões deste professor"
-                      : "Visualize e gerencie todas as sessões desta turma"}
+                      ? "Visualize e gerencie todas as aulas deste professor"
+                      : "Visualize e gerencie todas as aulas desta turma"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
-                    {sessions?.length || 0} sessões
+                    {sessions?.length || 0} Aulas
                   </span>
                   <span className="bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
                     {sessions?.filter((s) => !s.isClosed).length || 0} abertas
@@ -272,7 +280,7 @@ export default function ClassesSession() {
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                   <div className="w-full sm:w-auto">
                     <Search
-                      placeholder="Buscar sessões por título ou notas..."
+                      placeholder="Buscar aulas por título ou notas..."
                       onChange={handleSearch}
                     />
                   </div>
@@ -282,7 +290,7 @@ export default function ClassesSession() {
                       className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       <FaPlus className="mr-2" />
-                      Nova Sessão
+                      Nova Aula
                     </Link>
                   )}
                 </div>
@@ -294,7 +302,7 @@ export default function ClassesSession() {
               <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <h3 className="text-xl font-bold text-gray-800 flex items-center">
                   <FaCalendarAlt className="text-red-600 mr-3" />
-                  Lista de Sessões
+                  Lista de Aulas
                   <span className="ml-3 bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
                     {filtered.length} registros
                   </span>
@@ -340,7 +348,7 @@ export default function ClassesSession() {
                         className="inline-flex items-center px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                       >
                         <FaPlus className="mr-2" />
-                        Criar Primeira Sessão
+                        Criar Primeira Aula
                       </Link>
                     )}
                   </div>
@@ -350,18 +358,23 @@ export default function ClassesSession() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {filtered.map((s) => {
                       const sessionId = s._id || s.id;
-                      const isClosed = s.isClosed;
+                      const isClosed = s.status == "closed";
 
                       return (
                         <div
                           key={sessionId}
-                          className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow duration-200"
-                        >
+                          onClick={()=> {handleEdit(sessionId)}}
+                          className={`border border-gray-200 rounded-xl p-6 transition-all duration-200
+                          ${isClosed
+                              ? "bg-gray-100 text-gray-500 opacity-80 pointer-none:"
+                              : "bg-white hover:shadow-md cursor-pointer hover:scale-[1.02]"
+                            }
+                        `}>
                           {/* Cabeçalho da Sessão */}
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="font-bold text-gray-800 text-lg mb-2">
-                                {s.title || "Sessão sem título"}
+                                {s.name || "Sessão sem título"}
                               </h3>
                               <div className="flex items-center">
                                 <span
@@ -385,17 +398,6 @@ export default function ClassesSession() {
                                 </span>
                               </div>
                             </div>
-                            <button
-                              onClick={() =>
-                                navigate(
-                                  `/attendances/session/${sessionId}`,
-                                )
-                              }
-                              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                            >
-                              <FaChartBar className="mr-2" />
-                              Relatório
-                            </button>
                           </div>
 
                           {/* Informações da Sessão */}
@@ -433,41 +435,39 @@ export default function ClassesSession() {
 
                           {/* Rodapé com Ações */}
                           <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
-                            <button
-                              onClick={() => handleEdit(sessionId)}
-                              className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center"
-                            >
-                              <FaEdit className="mr-2" />
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDelete(sessionId)}
-                              className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center"
-                            >
-                              <FaTrash className="mr-2" />
-                              Excluir
-                            </button>
-                            <button
-                              onClick={() => handleClose(sessionId)}
-                              className={`inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex-1 min-w-[120px] justify-center ${
-                                isClosed
-                                  ? "bg-green-600 hover:bg-green-700"
-                                  : "bg-blue-600 hover:bg-blue-700"
-                              }`}
-                            >
-                              {isClosed ? (
-                                <>
-                                  <FaLockOpen className="mr-2" />
-                                  Reabrir
-                                </>
-                              ) : (
-                                <>
+                            {!isClosed && (
+                              <>
+                                <button
+                                  onClick={() => handleDelete(sessionId)}
+                                  className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg flex-1 min-w-[120px] justify-center"
+                                >
+                                  <FaTrash className="mr-2" />
+                                  Excluir
+                                </button>
+
+                                <button
+                                  onClick={() => handleClose(sessionId)}
+                                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex-1 min-w-[120px] justify-center"
+                                >
                                   <FaLock className="mr-2" />
                                   Fechar
-                                </>
-                              )}
-                            </button>
+                                </button>
+                              </>
+                            )}
+
+                            {isClosed && (
+                              <button
+                                onClick={() =>
+                                  navigate(`/reports/class-session/${sessionId}`)
+                                }
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg w-full justify-center"
+                              >
+                                <FaChartBar className="mr-2" />
+                                Ver Relatório
+                              </button>
+                            )}
                           </div>
+
                         </div>
                       );
                     })}
@@ -478,6 +478,12 @@ export default function ClassesSession() {
           </>
         )}
       </div>
+      <Toast 
+        message={message.text}
+        type={message.type}
+        onClose={()=> {setMessage({text: "", type: ""})}}
+      
+      />
     </Layout>
   );
 }

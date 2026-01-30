@@ -103,7 +103,7 @@ export default function ClassesPage() {
           </div>
           <div className="flex gap-5">
             <button
-              className="ml-3 bg-red-600 hover:bg-red-700 text-white font-medium text-sm px-4 py-1 rounded-lg transition-colors duration-200"
+              className="ml-3 bg-red-600 hover:bg-red-700 text-white font-medium text-sm px-4 flex items-center justify-between py-1 rounded-lg transition-colors duration-200"
               onClick={() => navigate("/classes/new")}
             >
               Criar Turma

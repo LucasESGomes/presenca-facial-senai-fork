@@ -28,15 +28,26 @@ class ClassSessionService extends BaseService {
         const date = new Date();
         date.setHours(0, 0, 0, 0);
 
-        const classSessionExists = await this.model.findOne({
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const conflict = await this.model.findOne({
             class: classId,
             room,
-            date,
+            status: "open",
+            date: {
+                $gte: startOfDay,
+                $lte: endOfDay,
+            },
         });
 
-
-        if (classSessionExists) {
-            throw new ValidationError("Já existe uma aula para esta turma, data e sala.");
+        if (conflict) {
+            throw new ValidationError(
+                "Já existe uma aula aberta para essa turma e sala neste dia."
+            );
         }
 
         const session = await super.create({
@@ -86,7 +97,7 @@ class ClassSessionService extends BaseService {
     async getByTeacher(teacherId) {
         return this.model
             .find({ teacher: teacherId })
-            .populate("classId", "code")
+            .populate("class", "code")
             .populate("room", "name")
             .sort({ date: -1 });
     }

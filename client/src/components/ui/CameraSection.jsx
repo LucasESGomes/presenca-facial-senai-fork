@@ -209,7 +209,7 @@ export default function CameraSection({ isActive, onCapture, onClose, loading })
               loading && (    
                 <div className="absolute bg-black/55 bottom-0 right-0 left-0 w-full h-full pointer-events-none flex justify-center items-center">
                   <div className="flex-col justify-center items-center flex gap-5">
-                    <img src="loading-logo.gif" className="w-20" alt="" />
+                    <img src="/loading-logo.gif" className="w-20" alt="" />
                       <p className="text-white font-medium text-center">
                         {loadingPhrases[phraseIndex]}
                         {".".repeat(dots)}

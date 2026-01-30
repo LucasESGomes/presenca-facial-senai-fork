@@ -21,6 +21,7 @@ import LoginPage from "../pages/LoginPage.jsx";
 import AccessRequestPage from "../pages/AccessRequestPage.jsx";
 import AccessRequestsAdminPage from "../pages/AccessRequestsAdminPage.jsx";
 import EditPage from "../pages/EditPage.jsx";
+import ClassAttendancePage from "../pages/ClassAttendancePage.jsx";
 
 function AppRouter() {
   return (
@@ -203,7 +204,7 @@ function AppRouter() {
           path={ROUTES.PRIVATE.SESSIONS.EDIT}
           element={
             <ProtectedRoute>
-              <EditPage />
+              < ClassAttendancePage />
             </ProtectedRoute>
           }
         ></Route>
