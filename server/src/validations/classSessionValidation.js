@@ -7,6 +7,19 @@ const objectId = Joi.string()
         "string.empty": "O ID não pode estar vazio."
     });
 
+const subjectCode = Joi.string()
+    .min(2)
+    .max(20)
+    .uppercase()
+    .trim()
+    .messages({
+        "string.base": "O código da matéria deve ser um texto válido.",
+        "string.empty": "O código da matéria não pode estar vazio.",
+        "string.min": "O código da matéria deve ter no mínimo {#limit} caracteres.",
+        "string.max": "O código da matéria deve ter no máximo {#limit} caracteres."
+    });
+
+
 export const classSessionSchemas = {
     // Criar sessão
     create: Joi.object({
@@ -14,8 +27,16 @@ export const classSessionSchemas = {
             "any.required": "Você deve informar a turma."
         }),
 
+        teacher: objectId.optional().messages({
+            "string.pattern.base": "O ID do professor deve ser um ObjectId válido."
+        }),
+
         room: objectId.required().messages({
             "any.required": "Você deve informar a sala da sessão."
+        }),
+
+        subjectCode: subjectCode.required().messages({
+            "any.required": "Você deve informar a matéria da sessão."
         }),
 
         name: Joi.string()
@@ -32,7 +53,10 @@ export const classSessionSchemas = {
     // Atualizar sessão
     update: Joi.object({
         name: Joi.string().min(3).max(80),
-        date: Joi.date()
+        date: Joi.date(),
+
+        // opcionalmente permitir troca de matéria
+        subjectCode: subjectCode.optional()
     })
         .min(1)
         .messages({

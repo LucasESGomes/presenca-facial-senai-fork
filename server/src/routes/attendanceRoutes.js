@@ -57,12 +57,34 @@ router.get(
     attendanceController.getByClass
 );
 
+/**
+ * =========================================================
+ * RELATÓRIOS / FREQUÊNCIA
+ * =========================================================
+ */
+
 // Relatório completo da sessão
 //
 router.get(
     "/session/:sessionId/full-report",
     authenticateJWT(),
     attendanceController.getFullReportBySession
+);
+
+
+// Frequência de um aluno em uma matéria
+router.get(
+    "/student/:studentId/class/:classId/subject/:subjectCode",
+    authenticateJWT(),
+    attendanceController.getStudentSubjectAttendance
+);
+
+// Tabela de frequência da turma por matéria
+// (Aluno | Matrícula | Faltas | Atrasos | Frequência)
+router.get(
+    "/class/:classId/subject/:subjectCode/table",
+    authenticateJWT(),
+    attendanceController.getClassAttendanceTableBySubject
 );
 
 /**

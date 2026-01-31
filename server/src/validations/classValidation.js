@@ -1,6 +1,36 @@
 import Joi from "joi";
 
 /**
+ * Sub-schema de matéria (subject)
+ */
+const subjectSchema = Joi.object({
+    code: Joi.string()
+        .min(2)
+        .max(20)
+        .uppercase()
+        .required()
+        .messages({
+            "string.base": "O código da matéria deve ser um texto válido.",
+            "string.empty": "O código da matéria não pode estar vazio.",
+            "string.min": "O código da matéria deve ter no mínimo {#limit} caracteres.",
+            "string.max": "O código da matéria deve ter no máximo {#limit} caracteres.",
+            "any.required": "O código da matéria é obrigatório."
+        }),
+
+    name: Joi.string()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            "string.base": "O nome da matéria deve ser um texto válido.",
+            "string.empty": "O nome da matéria não pode estar vazio.",
+            "string.min": "O nome da matéria deve ter no mínimo {#limit} caracteres.",
+            "string.max": "O nome da matéria deve ter no máximo {#limit} caracteres.",
+            "any.required": "O nome da matéria é obrigatório."
+        }),
+});
+
+/**
  * Campos base usados tanto na criação quanto na atualização
  */
 const baseSchema = {
@@ -59,7 +89,6 @@ const baseSchema = {
             "array.base": "A lista de professores deve ser um array."
         }),
 
-    // 🆕 Salas físicas associadas à turma
     rooms: Joi.array()
         .items(
             Joi.string()
@@ -70,6 +99,21 @@ const baseSchema = {
         )
         .messages({
             "array.base": "A lista de salas deve ser um array."
+        }),
+
+    // 🆕 Matérias da turma
+    subjects: Joi.array()
+        .items(subjectSchema)
+        .custom((subjects, helpers) => {
+            const codes = subjects.map(s => s.code);
+            if (codes.length !== new Set(codes).size) {
+                return helpers.error("any.custom");
+            }
+            return subjects;
+        })
+        .messages({
+            "array.base": "A lista de matérias deve ser um array.",
+            "any.custom": "Existem matérias com código duplicado na turma."
         }),
 };
 
@@ -85,6 +129,7 @@ export const classSchemas = {
         year: baseSchema.year.required(),
         teachers: baseSchema.teachers.optional(),
         rooms: baseSchema.rooms.optional(),
+        subjects: baseSchema.subjects.optional(),
     }),
 
     // Atualização de turma
@@ -95,10 +140,10 @@ export const classSchemas = {
         year: baseSchema.year.optional(),
         teachers: baseSchema.teachers.optional(),
         rooms: baseSchema.rooms.optional(),
+        subjects: baseSchema.subjects.optional(),
     })
         .min(1)
         .messages({
             "object.min": "Envie pelo menos um campo para atualização."
         }),
 };
-    

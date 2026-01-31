@@ -26,6 +26,8 @@ class AttendanceService extends BaseService {
             status: "open"
         });
 
+        console.log("Found open session for room:", session);
+
         // 👉 NÃO há sessão aberta → PRE-ATTENDANCE
         if (!session) {
             await PreAttendanceService.create({
@@ -267,6 +269,149 @@ class AttendanceService extends BaseService {
         await PreAttendanceService.clearRoom(session.room.toString());
 
         return { created };
+    }
+
+    async getStudentSubjectAttendance({
+        classId,
+        studentId,
+        subjectCode
+    }) {
+        if (!classId || !studentId || !subjectCode) {
+            throw new ValidationError(
+                "classId, studentId e subjectCode são obrigatórios."
+            );
+        }
+
+        // total de aulas dadas da matéria
+        const totalSessions = await ClassSession.countDocuments({
+            class: classId,
+            subjectCode,
+            status: "closed"
+        });
+
+        if (totalSessions === 0) {
+            return {
+                totalClasses: 0,
+                presences: 0,
+                absences: 0,
+                frequency: 0
+            };
+        }
+
+        // presenças do aluno
+        const presences = await Attendance.countDocuments({
+            class: classId,
+            student: studentId,
+            status: { $in: ["presente", "atrasado"] }
+        }).populate({
+            path: "session",
+            match: { subjectCode }
+        });
+
+        const absences = totalSessions - presences;
+
+        const frequency = Number(
+            ((presences / totalSessions) * 100).toFixed(2)
+        );
+
+        return {
+            totalClasses: totalSessions,
+            presences,
+            absences,
+            frequency
+        };
+    }
+
+    /**
+     * Relatório de frequência da turma por matéria
+     * Retorna formato de tabela
+     */
+    async getClassAttendanceTableBySubject({ classId, subjectCode }) {
+        if (!classId || !subjectCode) {
+            throw new ValidationError("classId e subjectCode são obrigatórios.");
+        }
+
+        // 1️⃣ Busca todas as sessões encerradas dessa matéria
+        const sessions = await ClassSession.find({
+            class: classId,
+            subjectCode,
+            status: "closed",
+        }).select("_id");
+
+        const totalAulas = sessions.length;
+
+        if (totalAulas === 0) {
+            return {
+                subjectCode,
+                totalAulas: 0,
+                students: []
+            };
+        }
+
+        const sessionIds = sessions.map(s => s._id);
+
+        // 2️⃣ Busca todos os alunos da turma
+        const students = await Student.find({
+            classes: { $exists: true }
+        }).where("classes").equals(
+            (await Class.findById(classId)).code
+        );
+
+        // 3️⃣ Busca todas as presenças da matéria
+        const attendances = await this.model.find({
+            class: classId,
+            session: { $in: sessionIds }
+        }).populate("student", "name registration");
+
+        // 4️⃣ Agrupa presença por aluno
+        const attendanceMap = {};
+
+        for (const att of attendances) {
+            const studentId = att.student._id.toString();
+
+            if (!attendanceMap[studentId]) {
+                attendanceMap[studentId] = {
+                    presente: 0,
+                    atrasado: 0,
+                };
+            }
+
+            if (att.status === "presente") {
+                attendanceMap[studentId].presente++;
+            }
+
+            if (att.status === "atrasado") {
+                attendanceMap[studentId].atrasado++;
+            }
+        }
+
+        // 5️⃣ Monta a tabela final
+        const table = students.map(student => {
+            const stats = attendanceMap[student._id.toString()] || {
+                presente: 0,
+                atrasado: 0
+            };
+
+            const totalCompareceu = stats.presente + stats.atrasado;
+            const faltas = totalAulas - totalCompareceu;
+            const frequencia = Number(
+                ((totalCompareceu / totalAulas) * 100).toFixed(2)
+            );
+
+            return {
+                aluno: student.name,
+                matricula: student.registration,
+                faltas,
+                atrasos: stats.atrasado,
+                frequencia
+            };
+        });
+
+        return {
+            subjectCode,
+            totalAulas,
+            alunos: table
+        };
     }
 
 }

@@ -11,7 +11,7 @@ const classSessionController = {
         let teacherId;
         if (req.user.role !== 'professor') {
             if (!req.body.teacher) {
-                return ApiResponse.BAD_REQUEST(res, "O ID do professor é obrigatório.");
+                return ApiResponse.BADREQUEST(res, "O ID do professor é obrigatório.");
             } else {
                 teacherId = req.body.teacher;
             }

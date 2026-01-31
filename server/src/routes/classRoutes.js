@@ -130,4 +130,39 @@ router.get(
     classController.getStudents
 );
 
+/**
+ * =========================
+ * SUBJECTS (MATÉRIAS)
+ * =========================
+ */
+
+// Listar matérias da turma
+router.get(
+    "/:id/subjects",
+    authenticateJWT(),
+    classController.getSubjects
+);
+
+// Adicionar matéria à turma
+router.post(
+    "/:id/subjects",
+    authenticateJWT("coordenador"),
+    classController.addSubject
+);
+
+// Atualizar matéria da turma (ex: nome)
+router.patch(
+    "/:id/subjects/:subjectCode",
+    authenticateJWT("coordenador"),
+    classController.updateSubject
+);
+
+// Remover matéria da turma
+router.delete(
+    "/:id/subjects/:subjectCode",
+    authenticateJWT("coordenador"),
+    classController.removeSubject
+);
+
+
 export default router;

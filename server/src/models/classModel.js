@@ -1,5 +1,23 @@
 import mongoose from "mongoose";
 
+const subjectSubSchema = new mongoose.Schema(
+    {
+        code: {
+            type: String,
+            required: true,
+            uppercase: true,
+            trim: true,
+        },
+
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+    },
+    { _id: false }
+);
+
 const classSchema = new mongoose.Schema(
     {
         code: {
@@ -36,6 +54,18 @@ const classSchema = new mongoose.Schema(
                 ref: "Room",
             },
         ],
+
+        subjects: {
+            type: [subjectSubSchema],
+            default: [],
+            validate: {
+                validator: function (subjects) {
+                    const codes = subjects.map(s => s.code);
+                    return codes.length === new Set(codes).size;
+                },
+                message: "Códigos de matérias duplicados na turma.",
+            },
+        },
     },
     { timestamps: true }
 );

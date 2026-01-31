@@ -3,7 +3,7 @@ import AttendanceService from "../services/AttendanceService.js";
 import controllerWrapper from "../utils/controllerWrapper.js";
 import ClassSessionService from "../services/ClassSessionService.js";
 import ClassService from "../services/ClassService.js";
-import Types from "mongoose";
+import PreAttendanceService from "../services/PreAttendanceService.js";
 
 import FormData from "form-data";
 import axios from "axios";
@@ -258,6 +258,30 @@ const attendanceController = {
         await AttendanceService.delete(req.params.id);
         return ApiResponse.NO_CONTENT(res, "Registro removido.");
     }),
+
+    getStudentSubjectAttendance: controllerWrapper(async (req, res) => {
+        const { classId, studentId, subjectCode } = req.params;
+
+        const report = await AttendanceService.getStudentSubjectAttendance({
+            classId,
+            studentId,
+            subjectCode
+        });
+
+        return ApiResponse.OK(res, "", report);
+    }),
+
+    getClassAttendanceTableBySubject: controllerWrapper(async (req, res) => {
+        const { classId, subjectCode } = req.params;
+
+        const table = await AttendanceService.getClassAttendanceTableBySubject({
+            classId,
+            subjectCode
+        });
+
+        return ApiResponse.OK(res, "", table);
+    }),
+
 };
 
 export default attendanceController;

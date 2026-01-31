@@ -22,6 +22,14 @@ const classSessionSchema = new mongoose.Schema(
             required: true
         },
 
+        subjectCode: {
+            type: String,
+            required: true,
+            uppercase: true,
+            trim: true,
+            index: true
+        },
+
         name: {
             type: String,
             required: true,
@@ -48,9 +56,7 @@ const classSessionSchema = new mongoose.Schema(
             default: null
         }
     },
-    {
-        timestamps: true
-    }
+    { timestamps: true }
 );
 
 export default mongoose.model("ClassSession", classSessionSchema);

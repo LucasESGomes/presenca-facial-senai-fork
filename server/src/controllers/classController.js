@@ -119,6 +119,63 @@ const classController = {
 
         return ApiResponse.OK(res, "", students);
     }),
+
+    /* ==========================
+   SUBJECTS (MATÉRIAS)
+========================== */
+
+    // Lista matérias da turma
+    getSubjects: controllerWrapper(async (req, res) => {
+        const { id } = req.params;
+        const subjects = await ClassService.getSubjects(id);
+        return ApiResponse.OK(res, "", subjects || []);
+    }),
+
+    // Adiciona matéria à turma
+    addSubject: controllerWrapper(async (req, res) => {
+        const { id } = req.params;
+        const { code, name } = req.body;
+
+        const updatedClass = await ClassService.addSubject(id, { code, name });
+
+        return ApiResponse.OK(
+            res,
+            "Matéria adicionada à turma com sucesso.",
+            updatedClass.subjects
+        );
+    }),
+
+    // Atualiza matéria da turma (ex: nome)
+    updateSubject: controllerWrapper(async (req, res) => {
+        const { id, subjectCode } = req.params;
+        const updateData = req.body;
+
+        const updatedClass = await ClassService.updateSubject(
+            id,
+            subjectCode,
+            updateData
+        );
+
+        return ApiResponse.OK(
+            res,
+            "Matéria atualizada com sucesso.",
+            updatedClass.subjects
+        );
+    }),
+
+    // Remove matéria da turma
+    removeSubject: controllerWrapper(async (req, res) => {
+        const { id, subjectCode } = req.params;
+
+        const updatedClass = await ClassService.removeSubject(id, subjectCode);
+
+        return ApiResponse.OK(
+            res,
+            "Matéria removida da turma com sucesso.",
+            updatedClass.subjects
+        );
+    }),
+
 };
 
 export default classController;

@@ -15,7 +15,7 @@ class ClassSessionService extends BaseService {
      * - Usa teacherId vindo do JWT
      * - Sessão nasce aberta
      */
-    async create({ classId, name, teacherId, room }) {
+    async create({ classId, subjectCode, name, teacherId, room }) {
         if (!classId) {
             throw new ValidationError("O ID da turma é obrigatório.");
         }
@@ -24,6 +24,24 @@ class ClassSessionService extends BaseService {
         if (!classExists) {
             throw new NotFoundError("Turma não encontrada.");
         }
+
+        if (!classExists.subjects || classExists.subjects.length === 0) {
+            throw new ValidationError(
+                "Esta turma não possui matérias cadastradas."
+            );
+        }
+
+        const subject = classExists.subjects.find(
+            (s) => s.code === subjectCode
+        );
+
+        if (!subject) {
+            throw new ValidationError(
+                "A matéria informada não pertence a esta turma."
+            );
+        }
+
+
 
         const date = new Date();
         date.setHours(0, 0, 0, 0);
@@ -57,6 +75,7 @@ class ClassSessionService extends BaseService {
             teacher: teacherId,
             room,
             status: "open",
+            subjectCode,
         });
 
         await AttendanceService.consumePreAttendances(session._id);

@@ -20,7 +20,7 @@ class ClassService extends BaseService {
 
         const existing = await this.model.findOne({ code: data.code });
         if (existing)
-            throw new ConflictError("Já existe uma turma com este código.");
+            throw new ConflictError("Já existe umaturma  com este código.");
 
         return super.create(data);
     }
@@ -180,6 +180,91 @@ class ClassService extends BaseService {
             throw err;
         }
     }
+
+    async getSubjects(classId) {
+        const classData = await this.model.findById(classId, "subjects");
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        return classData.subjects;
+    }
+
+    async getSubjectByCode(classId, subjectCode) {
+        const classData = await this.model.findById(classId, "subjects");
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        const subject = classData.subjects.find(
+            (s) => s.code === subjectCode.toUpperCase()
+        );
+
+        if (!subject)
+            throw new NotFoundError("Matéria não encontrada nesta turma.");
+
+        return subject;
+    }
+
+    async addSubject(classId, subject) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        const exists = classData.subjects.some(
+            (s) => s.code === subject.code.toUpperCase()
+        );
+
+        if (exists)
+            throw new ConflictError("Já existe uma matéria com este código.");
+
+        classData.subjects.push({
+            code: subject.code.toUpperCase(),
+            name: subject.name,
+        });
+
+        await classData.save();
+        return classData.subjects;
+    }
+
+    async updateSubject(classId, subjectCode, updateData) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        const subject = classData.subjects.find(
+            (s) => s.code === subjectCode.toUpperCase()
+        );
+
+        if (!subject)
+            throw new NotFoundError("Matéria não encontrada.");
+
+        if (updateData.code)
+            subject.code = updateData.code.toUpperCase();
+
+        if (updateData.name)
+            subject.name = updateData.name;
+
+        await classData.save();
+        return subject;
+    }
+
+    async removeSubject(classId, subjectCode) {
+        const classData = await this.model.findById(classId);
+        if (!classData)
+            throw new NotFoundError("Turma não encontrada.");
+
+        const initialLength = classData.subjects.length;
+
+        classData.subjects = classData.subjects.filter(
+            (s) => s.code !== subjectCode.toUpperCase()
+        );
+
+        if (classData.subjects.length === initialLength)
+            throw new NotFoundError("Matéria não encontrada.");
+
+        await classData.save();
+        return classData.subjects;
+    }
+
 }
 
 export default new ClassService();
