@@ -4,6 +4,9 @@ import { useUsers } from "../../hooks/useUsers";
 import { useRooms } from "../../hooks/useRooms";
 import useAttendances from "../../hooks/useAttendances";
 import useClasses from "../../hooks/useClasses";
+import { classesApi } from "../../api/classes";
+import { useAuth } from "../../context/AuthContext";
+import { useMemo } from "react";
 import Toast from "../ui/Toast";
 import Modal from "../ui/Modal"; // Importar o Modal
 import useModal from "../../hooks/useModal"; // Importar o hook useModal
@@ -22,7 +25,6 @@ import {
 } from "react-icons/fa";
 import { Navigate } from "react-router-dom";
 
-
 export default function ClassSessionForm({
   mode = "create",
   initialData = {},
@@ -32,7 +34,9 @@ export default function ClassSessionForm({
   const { createSession, updateSession } = useClassesSessions();
   const { teachers, loadUsers } = useUsers();
   const { rooms, loadRooms } = useRooms();
-  const { classes, loadClasses } = useClasses();
+  const { classes, loadClasses, loadMyClasses } = useClasses();
+  const [selectedClass, setSelectedClass] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const { getFullReportBySession } = useAttendances();
 
   // Estado do Toast
@@ -46,18 +50,134 @@ export default function ClassSessionForm({
     notes: "",
     classId: fixedClassId || "",
     room: "",
-    teacher: "",
+    subject: "",
     isClosed: false,
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   // 🔹 Carregar dados auxiliares
   useEffect(() => {
+    if (authLoading) return;
+
     loadUsers();
     loadRooms();
-    loadClasses();
-  }, [loadUsers, loadRooms, loadClasses]);
+
+    if (user && user.role === "professor") {
+      if (fixedClassId) {
+        (async () => {
+          try {
+            const res = await classesApi.getById(fixedClassId);
+            if (res?.success) {
+              setSelectedClass(res.data);
+              // pre-select class and a room if available
+              setForm((prev) => ({
+                ...prev,
+                classId: fixedClassId,
+                room:
+                  prev.room ||
+                  (res.data.rooms && res.data.rooms[0]
+                    ? res.data.rooms[0]._id ||
+                      res.data.rooms[0].id ||
+                      res.data.rooms[0]
+                    : ""),
+              }));
+            }
+            // eslint-disable-next-line no-unused-vars
+          } catch (e) {
+            // ignore; loadMyClasses as fallback
+            await loadMyClasses();
+          }
+        })();
+      } else {
+        loadMyClasses();
+      }
+    } else {
+      loadClasses();
+    }
+  }, [
+    loadUsers,
+    loadRooms,
+    loadClasses,
+    loadMyClasses,
+    user,
+    fixedClassId,
+    authLoading,
+  ]);
+
+  // If the creator is a professor, auto-fill teacher and lock selection
+  useEffect(() => {
+    if (user && user.role === "professor" && !initialData && mode !== "edit") {
+      const uid = String(user.id || user._id || "");
+      setForm((prev) => ({ ...prev, teacher: uid }));
+    }
+  }, [user, initialData, mode]);
+
+  // Compute rooms that belong to the selected class (if any)
+  const filteredRooms = useMemo(() => {
+    if (!form.classId) return rooms || [];
+    const cls =
+      classes.find((c) => c._id === form.classId || c.id === form.classId) ||
+      selectedClass;
+    const classRoomIds = (cls?.rooms || []).map((r) => r._id || r.id || r);
+    return (rooms || []).filter((r) => classRoomIds.includes(r._id || r.id));
+  }, [rooms, classes, form.classId, selectedClass]);
+
+  // Compute teachers linked to the selected class (if any)
+  const filteredTeachers = useMemo(() => {
+    if (!form.classId) return teachers || [];
+    const cls =
+      classes.find((c) => c._id === form.classId || c.id === form.classId) ||
+      selectedClass;
+    const classTeacherIds = (cls?.teachers || []).map(
+      (t) => t._id || t.id || t,
+    );
+    // If class has no teachers defined, return global teachers
+    if (!classTeacherIds || classTeacherIds.length === 0) return teachers || [];
+    return (teachers || []).filter((t) =>
+      classTeacherIds.includes(t._id || t.id),
+    );
+  }, [teachers, classes, form.classId, selectedClass]);
+
+  // Compute subjects linked to the selected class (if any)
+  const classSubjects = useMemo(() => {
+    if (!form.classId) return selectedClass?.subjects || [];
+    const cls =
+      classes.find((c) => c._id === form.classId || c.id === form.classId) ||
+      selectedClass;
+    return cls?.subjects || [];
+  }, [classes, form.classId, selectedClass]);
+
+  // If current selected subject is not in classSubjects, clear it
+  useEffect(() => {
+    if (form.subject) {
+      const exists = classSubjects.some(
+        (s) =>
+          s.code === form.subject ||
+          s._id === form.subject ||
+          s.id === form.subject,
+      );
+      if (!exists) setForm((prev) => ({ ...prev, subject: "" }));
+    } else if (!form.subject && classSubjects.length > 0 && fixedClassId) {
+      // if class is fixed and subject empty, preselect first subject
+      const first = classSubjects[0];
+      setForm((prev) => ({
+        ...prev,
+        subject: first?.code || first?._id || first?.id || "",
+      }));
+    }
+  }, [classSubjects, form.subject, fixedClassId]);
+
+  // If current selected room is not in filteredRooms, clear it
+  useEffect(() => {
+    if (form.room) {
+      const exists = filteredRooms.some((r) => (r._id || r.id) === form.room);
+      if (!exists) {
+        setForm((prev) => ({ ...prev, room: "" }));
+      }
+    }
+  }, [filteredRooms, form.room]);
 
   // 🔹 Preencher no EDIT
   useEffect(() => {
@@ -66,9 +186,14 @@ export default function ClassSessionForm({
         name: initialData.name || "",
         classId: initialData.classId || "",
         room: initialData.room || "",
+        subject:
+          typeof initialData.subject === "string"
+            ? initialData.subject
+            : initialData.subject?.code || initialData.subject || "",
         notes: initialData.notes || "",
         teacher: initialData.teacher || "",
-        isClosed: initialData.status === "closed" || initialData.isClosed || false,
+        isClosed:
+          initialData.status === "closed" || initialData.isClosed || false,
       });
     }
   }, [mode, initialData]);
@@ -90,7 +215,7 @@ export default function ClassSessionForm({
       cancelText: "Cancelar",
       onConfirm: async () => {
         await performSubmit(payload, isEdit);
-      }
+      },
     });
   };
 
@@ -115,9 +240,11 @@ export default function ClassSessionForm({
 
       // Mostrar toast de sucesso
       showToast(
-        isEdit ? "Sessão atualizada com sucesso!" : "Sessão criada com sucesso!",
-        "success"
-      );  
+        isEdit
+          ? "Sessão atualizada com sucesso!"
+          : "Sessão criada com sucesso!",
+        "success",
+      );
 
       // Navegar para página de relatório completo após criação
 
@@ -134,7 +261,6 @@ export default function ClassSessionForm({
           isClosed: false,
         });
       }
-
     } catch (err) {
       showToast(err.message || "Erro ao salvar a sessão", "error");
     } finally {
@@ -181,6 +307,7 @@ export default function ClassSessionForm({
       classId: form.classId,
       room: form.room,
       teacher: form.teacher,
+      subjectCode: (form.subject || "").toString().toUpperCase().trim(),
       status: form.isClosed ? "closed" : "active",
     };
 
@@ -247,6 +374,19 @@ export default function ClassSessionForm({
                 disabled={!!fixedClassId}
               >
                 <option value="">Selecione a turma</option>
+                {selectedClass &&
+                  !classes.some(
+                    (c) =>
+                      (c._id || c.id) ===
+                      (selectedClass._id || selectedClass.id),
+                  ) && (
+                    <option
+                      key={selectedClass._id || selectedClass.id}
+                      value={selectedClass._id || selectedClass.id}
+                    >
+                      {selectedClass.code} - {selectedClass.name || "Sem nome"}
+                    </option>
+                  )}
                 {classes.map((cls) => (
                   <option key={cls._id} value={cls._id}>
                     {cls.code} - {cls.name || "Sem nome"}
@@ -276,9 +416,53 @@ export default function ClassSessionForm({
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
               >
                 <option value="">Selecione a sala</option>
-                {rooms.map((room) => (
+                {filteredRooms.map((room) => (
                   <option key={room._id} value={room._id}>
                     {room.name} - {room.location || "Sem localização"}
+                  </option>
+                ))}
+                {/* Include rooms from selectedClass that may not be present in global rooms list yet */}
+                {selectedClass &&
+                  (selectedClass.rooms || []).map((r) => {
+                    const rid = r._id || r.id || r;
+                    const exists = filteredRooms.some(
+                      (fr) => (fr._id || fr.id) === rid,
+                    );
+                    if (exists) return null;
+                    const name =
+                      typeof r === "object"
+                        ? r.name || `${r._id || r.id}`
+                        : `Sala vinculada ${rid}`;
+                    return (
+                      <option key={rid} value={rid}>
+                        {name}
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+
+            {/* DISCIPLINA / SUBJECT */}
+            <div>
+              <label className="block mb-2">
+                <div className="flex items-center text-gray-700 font-medium">
+                  <FaBook className="text-red-600 mr-2" />
+                  Disciplina
+                </div>
+              </label>
+              <select
+                name="subject"
+                value={form.subject}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+              >
+                <option value="">Selecione a disciplina</option>
+                {classSubjects.map((s, idx) => (
+                  <option
+                    key={s.code || s._id || s.id || idx}
+                    value={s.code || s._id || s.id}
+                  >
+                    {s.code} - {s.name}
                   </option>
                 ))}
               </select>
@@ -300,8 +484,32 @@ export default function ClassSessionForm({
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
               >
                 <option value="">Selecione o professor</option>
-                {teachers.map((t) => (
-                  <option key={t._id} value={t._id}>
+                {user &&
+                  user.role === "professor" &&
+                  form.teacher &&
+                  !(
+                    (filteredTeachers || []).some(
+                      (t) => String(t._id || t.id) === String(form.teacher),
+                    ) ||
+                    (teachers || []).some(
+                      (t) => String(t._id || t.id) === String(form.teacher),
+                    )
+                  ) && (
+                    <option
+                      value={String(form.teacher)}
+                      key={String(form.teacher)}
+                    >
+                      {user.name || "Você"}
+                    </option>
+                  )}
+                {(filteredTeachers && filteredTeachers.length > 0
+                  ? filteredTeachers
+                  : teachers
+                ).map((t) => (
+                  <option
+                    key={String(t._id || t.id)}
+                    value={String(t._id || t.id)}
+                  >
                     {t.name} - {t.email || "Sem e-mail"}
                   </option>
                 ))}
@@ -353,12 +561,14 @@ export default function ClassSessionForm({
                     className="sr-only"
                   />
                   <div
-                    className={`block w-12 h-6 rounded-full transition-colors ${form.isClosed ? "bg-red-600" : "bg-green-600"
-                      }`}
+                    className={`block w-12 h-6 rounded-full transition-colors ${
+                      form.isClosed ? "bg-red-600" : "bg-green-600"
+                    }`}
                   ></div>
                   <div
-                    className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${form.isClosed ? "transform translate-x-6" : ""
-                      }`}
+                    className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${
+                      form.isClosed ? "transform translate-x-6" : ""
+                    }`}
                   ></div>
                 </div>
               </label>

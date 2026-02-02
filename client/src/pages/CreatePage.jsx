@@ -21,6 +21,8 @@ export default function CreatePage() {
   const { pathname } = useLocation();
 
   const type = pathname.split("/")[1];
+  const searchParams = new URLSearchParams(useLocation().search);
+  const classIdFromQuery = searchParams.get("classId") || "";
 
   const { createClass } = useClasses();
   const { createStudent } = useStudents();
@@ -41,7 +43,13 @@ export default function CreatePage() {
       case "teachers":
         return <TeacherForm />;
       case "class-sessions":
-        return <ClassSession mode="create" onSubmit={createSession} />;
+        return (
+          <ClassSession
+            mode="create"
+            onSubmit={createSession}
+            classId={classIdFromQuery}
+          />
+        );
       case "attendances":
         return <AttendanceForm mode="create" />;
       default:

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRooms } from "../../hooks/useRooms";
+import useModal from "../../hooks/useModal";
+import Modal from "../ui/Modal";
 
 export default function RoomForm({
   mode = "create",
@@ -14,6 +16,7 @@ export default function RoomForm({
     isActive: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   useEffect(() => {
     if (mode === "edit" && initialData) {
@@ -46,84 +49,116 @@ export default function RoomForm({
         const id = initialData.id || initialData._id;
         const res = onSubmit ? await onSubmit(form) : await editRoom(id, form);
         if (!res?.success) throw new Error(res?.message || "Erro ao editar");
-        alert("Sala atualizada com sucesso");
+        showModal({
+          title: "Sala atualizada",
+          message: "Sala atualizada com sucesso",
+          type: "success",
+          showCancel: false,
+          confirmText: "OK",
+        });
       } else {
         const res = onSubmit ? await onSubmit(form) : await createRoom(form);
         if (!res?.success) throw new Error(res?.message || "Erro ao criar");
-        alert("Sala criada com sucesso");
+        showModal({
+          title: "Sala criada",
+          message: "Sala criada com sucesso",
+          type: "success",
+          showCancel: false,
+          confirmText: "OK",
+        });
         setForm({ name: "", code: "", location: "", isActive: true });
       }
     } catch (err) {
-      alert(err.message || "Erro ao salvar");
+      showModal({
+        title: "Erro",
+        message: err.message || "Erro ao salvar",
+        type: "danger",
+        showCancel: false,
+        confirmText: "OK",
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl">
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Nome
-        </label>
-        <input
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          required
-          className="w-full px-3 py-2 border rounded"
-        />
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+    <>
+      <form onSubmit={handleSubmit} className="max-w-2xl">
+        <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Código
+            Nome
           </label>
           <input
-            name="code"
-            value={form.code}
+            name="name"
+            value={form.name}
             onChange={handleChange}
             required
             className="w-full px-3 py-2 border rounded"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Localização
-          </label>
-          <input
-            name="location"
-            value={form.location}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded"
-          />
+
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Código
+            </label>
+            <input
+              name="code"
+              value={form.code}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Localização
+            </label>
+            <input
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border rounded"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          id="isActive"
-          name="isActive"
-          type="checkbox"
-          checked={form.isActive}
-          onChange={handleChange}
-          className="h-4 w-4"
-        />
-        <label htmlFor="isActive" className="text-sm text-gray-700">
-          Ativa
-        </label>
-      </div>
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            id="isActive"
+            name="isActive"
+            type="checkbox"
+            checked={form.isActive}
+            onChange={handleChange}
+            className="h-4 w-4"
+          />
+          <label htmlFor="isActive" className="text-sm text-gray-700">
+            Ativa
+          </label>
+        </div>
 
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
-        >
-          {mode === "edit" ? "Salvar" : "Criar"}
-        </button>
-      </div>
-    </form>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
+          >
+            {mode === "edit" ? "Salvar" : "Criar"}
+          </button>
+        </div>
+      </form>
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
+      />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import useClasses from "../../hooks/useClasses";
 import { useUsers } from "../../hooks/useUsers";
 import * as RoomsHook from "../../hooks/useRooms";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaUserGraduate,
   FaChalkboardTeacher,
@@ -17,6 +18,7 @@ import {
   FaUsers,
   FaCheck,
   FaTimes,
+  FaBook,
 } from "react-icons/fa";
 
 const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
@@ -33,6 +35,8 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
   const [selectedTeachers, setSelectedTeachers] = useState([]);
   const [selectedRooms, setSelectedRooms] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [subjects, setSubjects] = useState([]);
+  const navigate = useNavigate();
 
   // 🔹 Preencher dados no EDIT
   useEffect(() => {
@@ -40,13 +44,63 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
       setCode(initialData.code || "");
       setCourse(initialData.course || "");
       setShift(initialData.shift || "");
+      setSubjects(initialData.subjects || initialData.subject || []);
       setYear(initialData.year || new Date().getFullYear());
       setSelectedTeachers(
-        initialData.teachers?.map((t) => t._id || t.id) || []
+        (initialData.teachers || []).map((t) =>
+          String(typeof t === "string" ? t : t._id || t.id || ""),
+        ),
       );
-      setSelectedRooms(initialData.rooms?.map((r) => r._id || r.id) || []);
+      setSelectedRooms(
+        (initialData.rooms || []).map((r) =>
+          String(typeof r === "string" ? r : r._id || r.id || ""),
+        ),
+      );
+      // reset subject editing inputs
+      setSubjectCode("");
+      setSubjectName("");
+      setEditingSubjectIndex(null);
     }
   }, [mode, initialData]);
+
+  // Subjects temporary inputs
+  const [subjectCode, setSubjectCode] = useState("");
+  const [subjectName, setSubjectName] = useState("");
+  const [editingSubjectIndex, setEditingSubjectIndex] = useState(null);
+
+  const addOrUpdateSubject = () => {
+    const code = (subjectCode || "").trim();
+    const name = (subjectName || "").trim();
+    if (!code || !name) return;
+    if (editingSubjectIndex !== null && editingSubjectIndex >= 0) {
+      setSubjects((prev) =>
+        prev.map((s, i) => (i === editingSubjectIndex ? { code, name } : s)),
+      );
+      setEditingSubjectIndex(null);
+    } else {
+      setSubjects((prev) => [...prev, { code, name }]);
+    }
+    setSubjectCode("");
+    setSubjectName("");
+  };
+
+  const editSubject = (index) => {
+    const s = subjects[index];
+    if (!s) return;
+    setSubjectCode(s.code || "");
+    setSubjectName(s.name || "");
+    setEditingSubjectIndex(index);
+  };
+
+  const removeSubject = (index) => {
+    setSubjects((prev) => prev.filter((_, i) => i !== index));
+    // reset editing if removed
+    if (editingSubjectIndex === index) {
+      setEditingSubjectIndex(null);
+      setSubjectCode("");
+      setSubjectName("");
+    }
+  };
 
   useEffect(() => {
     loadUsers();
@@ -59,7 +113,17 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const payload = { code, course, shift, year };
+    // Ensure types/formats match server validation
+    const payload = {
+      code,
+      course,
+      shift,
+      year: Number(year),
+      subjects: (subjects || []).map((s) => ({
+        code: (s.code || "").toUpperCase(),
+        name: s.name,
+      })),
+    };
 
     const result = await onSubmit(payload);
 
@@ -73,6 +137,9 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
       for (const roomId of selectedRooms) {
         await addRoom(classId, roomId);
       }
+      // Redirect to the classes list after successful create/edit
+      navigate(`/classes`);
+      return;
     }
 
     setIsSubmitting(false);
@@ -80,13 +147,13 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
 
   const toggleTeacher = (id) => {
     setSelectedTeachers((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const toggleRoom = (id) => {
     setSelectedRooms((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -180,7 +247,7 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
                   >
                     <option value="">Selecione o turno</option>
-                    <option value="manha">Manhã</option>
+                    <option value="manhã">Manhã</option>
                     <option value="tarde">Tarde</option>
                     <option value="noite">Noite</option>
                   </select>
@@ -205,6 +272,82 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
                     max="2100"
                   />
                 </div>
+
+                {/* DISCIPLINAS / SUBJECTS */}
+                <div className="bg-white rounded-xl p-6 border border-gray-200">
+                  <div className="flex items-center mb-4">
+                    <FaBook className="text-red-600 text-xl mr-3" />
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800">
+                        Disciplinas
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        Adicione as disciplinas (código e nome) desta turma
+                      </p>
+                    </div>
+                    <span className="ml-auto bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
+                      {subjects.length} disciplina(s)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <input
+                      type="text"
+                      placeholder="Código (ex: BD)"
+                      value={subjectCode}
+                      onChange={(e) => setSubjectCode(e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-lg"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Nome da disciplina"
+                      value={subjectName}
+                      onChange={(e) => setSubjectName(e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-lg"
+                    />
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={addOrUpdateSubject}
+                        className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg w-full"
+                      >
+                        {editingSubjectIndex !== null
+                          ? "Atualizar"
+                          : "Adicionar"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {subjects.map((s, idx) => (
+                      <div
+                        key={`${s.code}-${idx}`}
+                        className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"
+                      >
+                        <div className="text-left mr-3">
+                          <div className="font-medium">{s.code}</div>
+                          <div className="text-xs text-gray-600">{s.name}</div>
+                        </div>
+                        <div className="ml-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => editSubject(idx)}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSubject(idx)}
+                            className="text-sm text-red-600 hover:text-red-800"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Professores */}
@@ -226,7 +369,7 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
 
                 <div className="flex flex-wrap gap-3">
                   {teachers.map((teacher) => {
-                    const id = teacher._id || teacher.id;
+                    const id = String(teacher._id || teacher.id || "");
                     const selected = selectedTeachers.includes(id);
                     return (
                       <button
@@ -280,7 +423,7 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
 
                 <div className="flex flex-wrap gap-3">
                   {rooms.map((room) => {
-                    const id = room._id || room.id;
+                    const id = String(room._id || room.id || "");
                     const selected = selectedRooms.includes(id);
                     return (
                       <button
@@ -353,10 +496,10 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
                         {shift === "manha"
                           ? "Manhã"
                           : shift === "tarde"
-                          ? "Tarde"
-                          : shift === "noite"
-                          ? "Noite"
-                          : "Não informado"}
+                            ? "Tarde"
+                            : shift === "noite"
+                              ? "Noite"
+                              : "Não informado"}
                       </span>
                     </div>
                   </div>
@@ -401,6 +544,10 @@ const ClassForm = ({ mode = "create", initialData = null, onSubmit }) => {
                       setYear(new Date().getFullYear());
                       setSelectedTeachers([]);
                       setSelectedRooms([]);
+                      setSubjects([]);
+                      setSubjectCode("");
+                      setSubjectName("");
+                      setEditingSubjectIndex(null);
                     }}
                     className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-all duration-200 flex items-center"
                   >

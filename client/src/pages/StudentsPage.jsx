@@ -3,13 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { useStudents } from "../hooks/useStudents";
 
 import Layout from "../components/layout/Layout";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
+import useModal from "../hooks/useModal";
 import Search from "../components/ui/Search";
 
 import { FaPlus, FaSearch, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 
 export default function StudentsPage() {
-  const { students, loading, error, loadStudents, deleteStudent } = useStudents();
+  const { students, loading, error, loadStudents, deleteStudent } =
+    useStudents();
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const showToast = (text, type = "info") => setMessage({ text, type });
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
 
@@ -66,14 +73,21 @@ export default function StudentsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm("Tem certeza que deseja deletar este aluno?")) {
-      const result = await deleteStudent(id);
-      if (result.success) {
-        alert("Aluno deletado com sucesso");
-      } else {
-        alert(result.message || "Erro ao deletar aluno");
-      }
-    }
+    showModal({
+      title: "Deletar Aluno",
+      message: "Tem certeza que deseja deletar este aluno?",
+      type: "danger",
+      confirmText: "Deletar",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        const result = await deleteStudent(id);
+        if (result.success) {
+          showToast("Aluno deletado com sucesso", "success");
+        } else {
+          showToast(result.message || "Erro ao deletar aluno", "error");
+        }
+      },
+    });
   };
 
   const handleEdit = (id) => {
@@ -263,6 +277,25 @@ export default function StudentsPage() {
           de <span className="font-bold">{students.length}</span> alunos
         </div>
       </div>
+
+      <Toast
+        message={message.text}
+        type={message.type}
+        onClose={() => setMessage({ text: "", type: "" })}
+      />
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
+      />
     </Layout>
   );
 }

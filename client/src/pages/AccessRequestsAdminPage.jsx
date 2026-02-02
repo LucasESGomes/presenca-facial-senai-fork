@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Layout from "../components/layout/Layout";
 import useAccessRequests from "../hooks/useAccessRequests";
 import {
@@ -18,7 +18,13 @@ import {
   FaCog,
 } from "react-icons/fa";
 
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
+import useModal from "../hooks/useModal";
+
 export default function AccessRequestsAdminPage() {
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const showToast = (text, type = "info") => setMessage({ text, type });
   const {
     requests,
     getAll,
@@ -38,27 +44,40 @@ export default function AccessRequestsAdminPage() {
     await getAll();
   };
 
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
+
   const handleDelete = async (id) => {
-    if (
-      !window.confirm(
+    showModal({
+      title: "Remover Solicitação",
+      message:
         "Tem certeza que deseja remover esta solicitação?\nEsta ação não pode ser desfeita.",
-      )
-    )
-      return;
-    await remove(id);
-    await getAll();
+      type: "danger",
+      confirmText: "Remover",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        await remove(id);
+        await getAll();
+      },
+    });
   };
 
   const handleCreateUser = async (id) => {
-    if (!window.confirm("Deseja criar um usuário a partir desta solicitação?"))
-      return;
-    const res = await createUserFromRequest(id);
-    if (res?.success) {
-      alert("Usuário criado com sucesso!");
-      await getAll();
-    } else {
-      alert(res.message || "Erro ao criar usuário");
-    }
+    showModal({
+      title: "Criar Usuário",
+      message: "Deseja criar um usuário a partir desta solicitação?",
+      type: "info",
+      confirmText: "Criar Usuário",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        const res = await createUserFromRequest(id);
+        if (res?.success) {
+          showToast("Usuário criado com sucesso!", "success");
+          await getAll();
+        } else {
+          showToast(res.message || "Erro ao criar usuário", "error");
+        }
+      },
+    });
   };
 
   // Contadores de status
@@ -361,6 +380,24 @@ export default function AccessRequestsAdminPage() {
           </div>
         </div>
       </div>
+      <Toast
+        message={message.text}
+        type={message.type}
+        onClose={() => setMessage({ text: "", type: "" })}
+      />
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
+      />
     </Layout>
   );
 }

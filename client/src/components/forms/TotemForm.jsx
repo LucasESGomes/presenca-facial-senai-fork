@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTotems } from "../../hooks/useTotems";
+import useModal from "../../hooks/useModal";
+import Modal from "../ui/Modal";
 import { useRooms } from "../../hooks/useRooms";
 import {
   FaQrcode,
@@ -28,6 +30,7 @@ export default function TotemForm({
     isActive: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   useEffect(() => {
     loadRooms();
@@ -67,16 +70,34 @@ export default function TotemForm({
           : await updateTotem(id, form);
         if (res?.success === false)
           throw new Error(res.message || "Erro ao atualizar totem");
-        alert("Totem atualizado");
+        showModal({
+          title: "Totem atualizado",
+          message: "Totem atualizado",
+          type: "success",
+          showCancel: false,
+          confirmText: "OK",
+        });
       } else {
         const res = onSubmit ? await onSubmit(form) : await createTotem(form);
         if (res?.success === false)
           throw new Error(res.message || "Erro ao criar totem");
-        alert("Totem criado");
+        showModal({
+          title: "Totem criado",
+          message: "Totem criado",
+          type: "success",
+          showCancel: false,
+          confirmText: "OK",
+        });
         setForm({ name: "", location: "", room: "", isActive: true });
       }
     } catch (err) {
-      alert(err.message || "Erro ao salvar");
+      showModal({
+        title: "Erro",
+        message: err.message || "Erro ao salvar",
+        type: "danger",
+        showCancel: false,
+        confirmText: "OK",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -291,6 +312,18 @@ export default function TotemForm({
             </p>
           </div>
         </form>
+        <Modal
+          isOpen={modalConfig.isOpen}
+          onClose={hideModal}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          type={modalConfig.type}
+          confirmText={modalConfig.confirmText}
+          cancelText={modalConfig.cancelText}
+          onConfirm={handleConfirm}
+          showCancel={modalConfig.showCancel}
+          showConfirm={modalConfig.showConfirm}
+        />
       </div>
     </div>
   );
