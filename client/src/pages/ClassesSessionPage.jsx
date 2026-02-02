@@ -5,7 +5,10 @@ import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import useClassesSessions from "../hooks/useClassesSessions";
 import { useUsers } from "../hooks/useUsers";
 import Toast from "../components/ui/Toast";
+import Modal from "../components/ui/Modal";
+import useModal from "../hooks/useModal";
 import useClasses from "../hooks/useClasses";
+import { useAuth } from "../context/AuthContext";
 import {
   FaCalendarAlt,
   FaChalkboardTeacher,
@@ -48,25 +51,45 @@ export default function ClassesSession() {
   const [filtered, setFiltered] = useState([]);
 
   const { teachers, loadUsers } = useUsers();
-  const { classes, loadClasses } = useClasses();
-  
+  const { classes, loadClasses, loadMyClasses } = useClasses();
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
+    if (authLoading) return;
     if (!id) {
-      loadUsers();
-      loadClasses();
+      // Only professors should see their own classes; others load full lists
+      if (user?.role === "professor") {
+        // load classes assigned to the logged-in professor
+        loadMyClasses();
+      } else {
+        // coordinators and others load full lists
+        loadUsers();
+        loadClasses();
+      }
     }
-  }, [id, loadUsers, loadClasses]);
+  }, [id, loadUsers, loadClasses, loadMyClasses, user?.role, authLoading]);
 
   useEffect(() => {
     if (!id) return;
 
+    // If route is for teacher sessions, prevent professors from loading other teachers' data
     if (isByTeacher) {
+      if (user?.role === "professor" && user.id !== id) {
+        // Not allowed to view other professors' sessions - clear list and show message
+        setFiltered([]);
+        // eslint-disable-next-line react-hooks/immutability
+        setMessage({
+          text: "Acesso negado a sessões de outros professores.",
+          type: "error",
+        });
+        return;
+      }
       console.log("Loading by teacher");
       loadByTeacher(id);
     } else {
       loadByClass(id);
     }
-  }, [id, isByTeacher, loadByClass, loadByTeacher]);
+  }, [id, isByTeacher, loadByClass, loadByTeacher, user?.id, user?.role]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -85,16 +108,21 @@ export default function ClassesSession() {
     setFiltered(res);
   }
 
-  const [message, setMessage] = useState({text: "", type: ""});
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   async function handleDelete(sessionId) {
-    if (
-      !window.confirm(
+    showModal({
+      title: "Excluir Sessão",
+      message:
         "Tem certeza que deseja excluir esta sessão?\nEsta ação não pode ser desfeita.",
-      )
-    )
-      return;
-    await deleteSession(sessionId);
+      type: "danger",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        await deleteSession(sessionId);
+      },
+    });
   }
 
   async function handleClose(sessionId) {
@@ -108,10 +136,16 @@ export default function ClassesSession() {
           await loadByClass(id);
         }
       } else {
-        setMessage({text: res?.message || "Erro ao fechar/reabrir sessão", type: "error"});
+        setMessage({
+          text: res?.message || "Erro ao fechar/reabrir sessão",
+          type: "error",
+        });
       }
     } catch (err) {
-      setMessage({text: err.message || "Erro ao fechar/reabrir sessão", type: "error"});
+      setMessage({
+        text: err.message || "Erro ao fechar/reabrir sessão",
+        type: "error",
+      });
     }
   }
 
@@ -144,18 +178,42 @@ export default function ClassesSession() {
                   Aulas por Turma
                 </h2>
                 <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
-                  {classes.length} turmas
+                  {
+                    (user?.role === "professor"
+                      ? classes.filter((cls) =>
+                          (cls.teachers || []).some(
+                            (t) => (t._id || t.id) === user.id || t === user.id,
+                          ),
+                        )
+                      : classes
+                    ).length
+                  }{" "}
+                  turmas
                 </span>
               </div>
 
-              {classes.length === 0 ? (
+              {(user?.role === "professor"
+                ? classes.filter((cls) =>
+                    (cls.teachers || []).some(
+                      (t) => (t._id || t.id) === user.id || t === user.id,
+                    ),
+                  )
+                : classes
+              ).length === 0 ? (
                 <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
                   <FaUsers className="text-gray-300 text-4xl mx-auto mb-4" />
                   <p className="text-gray-500">Nenhuma turma cadastrada</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {classes.map((cls) => (
+                  {(user?.role === "professor"
+                    ? classes.filter((cls) =>
+                        (cls.teachers || []).some(
+                          (t) => (t._id || t.id) === user.id || t === user.id,
+                        ),
+                      )
+                    : classes
+                  ).map((cls) => (
                     <Link
                       key={cls._id}
                       to={`/class-sessions/class/${cls._id}`}
@@ -186,62 +244,60 @@ export default function ClassesSession() {
               )}
             </div>
 
-            {/* Seção de Professores */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <FaChalkboardTeacher className="text-green-600 mr-2" />
-                  Aulas por Professor
-                </h2>
-                <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
-                  {teachers.length} professores
-                </span>
-              </div>
+            {/* Seção de Professores (visible only to coordinators) */}
+            {(user?.role === "coordinator" || user?.role === "coordenador") && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    <FaChalkboardTeacher className="text-green-600 mr-2" />
+                    Aulas por Professor
+                  </h2>
+                  <span className="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full">
+                    {teachers.length} professores
+                  </span>
+                </div>
 
-              {teachers.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
-                  <FaChalkboardTeacher className="text-gray-300 text-4xl mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum professor cadastrado</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {
-                    console.log("Teachers:", teachers)
-                  }
-                  {teachers.map((t) => (
-                    
-                    <Link
-                      key={t._id}
-                      to={`/class-sessions/teacher/${t._id}`}
-                      className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 overflow-hidden group"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start mb-4">
-                          <div className="bg-green-100 p-3 rounded-lg mr-4">
-                            <FaChalkboardTeacher className="text-green-600" />
+                {teachers.length === 0 ? (
+                  <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
+                    <FaChalkboardTeacher className="text-gray-300 text-4xl mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum professor cadastrado</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {console.log("Teachers:", teachers)}
+                    {teachers.map((t) => (
+                      <Link
+                        key={t._id}
+                        to={`/class-sessions/teacher/${t._id}`}
+                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 overflow-hidden group"
+                      >
+                        <div className="p-6">
+                          <div className="flex items-start mb-4">
+                            <div className="bg-green-100 p-3 rounded-lg mr-4">
+                              <FaChalkboardTeacher className="text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-gray-800 text-lg">
+                                {t.name || "Professor sem nome"}
+                              </h3>
+                              <p className="text-gray-600 text-sm mt-1 truncate">
+                                {t.email || "Sem e-mail"}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-bold text-gray-800 text-lg">
-                              {t.name || "Professor sem nome"}
-                            </h3>
-                            <p className="text-gray-600 text-sm mt-1 truncate">
-                              {t.email || "Sem e-mail"}
-                            </p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <FaCalendarAlt className="mr-2" />
+                            <span>Clique para ver Aulas</span>
                           </div>
                         </div>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <FaCalendarAlt className="mr-2" />
-                          <span>Clique para ver Aulas</span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
-
         {id && (
           <>
             {/* Cabeçalho Detalhado */}
@@ -286,7 +342,7 @@ export default function ClassesSession() {
                   </div>
                   {!isByTeacher && (
                     <Link
-                      to={`/class-sessions/`}
+                      to={`/class-sessions/?classId=${id}`}
                       className="inline-flex items-center px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       <FaPlus className="mr-2" />
@@ -344,7 +400,7 @@ export default function ClassesSession() {
                     </p>
                     {!isByTeacher && (
                       <Link
-                        to={`/class-sessions/`}
+                        to={`/class-sessions/?classId=${id}`}
                         className="inline-flex items-center px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                       >
                         <FaPlus className="mr-2" />
@@ -363,13 +419,17 @@ export default function ClassesSession() {
                       return (
                         <div
                           key={sessionId}
-                          onClick={()=> {handleEdit(sessionId)}}
+                          onClick={() => {
+                            handleEdit(sessionId);
+                          }}
                           className={`border border-gray-200 rounded-xl p-6 transition-all duration-200
-                          ${isClosed
+                          ${
+                            isClosed
                               ? "bg-gray-100 text-gray-500 opacity-80 pointer-none:"
                               : "bg-white hover:shadow-md cursor-pointer hover:scale-[1.02]"
-                            }
-                        `}>
+                          }
+                        `}
+                        >
                           {/* Cabeçalho da Sessão */}
                           <div className="flex justify-between items-start mb-4">
                             <div>
@@ -458,7 +518,9 @@ export default function ClassesSession() {
                             {isClosed && (
                               <button
                                 onClick={() =>
-                                  navigate(`/reports/class-session/${sessionId}`)
+                                  navigate(
+                                    `/reports/class-session/${sessionId}`,
+                                  )
                                 }
                                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg w-full justify-center"
                               >
@@ -467,7 +529,6 @@ export default function ClassesSession() {
                               </button>
                             )}
                           </div>
-
                         </div>
                       );
                     })}
@@ -478,11 +539,24 @@ export default function ClassesSession() {
           </>
         )}
       </div>
-      <Toast 
+      <Toast
         message={message.text}
         type={message.type}
-        onClose={()=> {setMessage({text: "", type: ""})}}
-      
+        onClose={() => {
+          setMessage({ text: "", type: "" });
+        }}
+      />
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
       />
     </Layout>
   );

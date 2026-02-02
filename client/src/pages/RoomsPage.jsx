@@ -2,6 +2,9 @@ import Layout from "../components/layout/Layout";
 import Search from "../components/ui/Search";
 import { useRooms } from "../hooks/useRooms";
 import { useEffect, useState } from "react";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
+import useModal from "../hooks/useModal";
 import { Link } from "react-router-dom";
 import {
   FaBuilding,
@@ -20,6 +23,9 @@ import {
 export default function RoomsPage() {
   const [filteredRooms, setFilteredRooms] = useState([]);
   const { rooms, loading, error, loadRooms, deleteRoom } = useRooms();
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const showToast = (text, type = "info") => setMessage({ text, type });
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   // Carregando as salas físicas
   useEffect(() => {
@@ -57,35 +63,57 @@ export default function RoomsPage() {
   }
 
   async function handleDelete(id) {
-    if (
-      !window.confirm(
-        "Tem certeza que deseja excluir esta sala?\nEsta ação não pode ser desfeita."
-      )
-    )
-      return;
-    const res = await deleteRoom(id);
-    if (res?.success) {
-      // Atualiza a lista local
-      setFilteredRooms((prev) => prev.filter((r) => (r._id || r.id) !== id));
-    } else {
-      alert(res?.message || "Erro ao excluir sala");
-    }
+    showModal({
+      title: "Excluir Sala",
+      message: "Tem certeza que deseja excluir esta sala?\nEsta ação não pode ser desfeita.",
+      type: "danger",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        const res = await deleteRoom(id);
+        if (res?.success) {
+          setFilteredRooms((prev) => prev.filter((r) => (r._id || r.id) !== id));
+        } else {
+          showToast(res?.message || "Erro ao excluir sala", "error");
+        }
+      },
+    });
   }
 
   if (loading) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50 p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-              <div className="text-gray-600 font-semibold text-lg">
-                Carregando salas...
+      <>
+        <Layout>
+          <div className="min-h-screen bg-gray-50 p-6">
+            <div className="flex justify-center items-center h-64">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+                <div className="text-gray-600 font-semibold text-lg">
+                  Carregando salas...
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Layout>
+        </Layout>
+        <Toast
+          message={message.text}
+          type={message.type}
+          onClose={() => setMessage({ text: "", type: "" })}
+        />
+
+        <Modal
+          isOpen={modalConfig.isOpen}
+          onClose={hideModal}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          type={modalConfig.type}
+          confirmText={modalConfig.confirmText}
+          cancelText={modalConfig.cancelText}
+          onConfirm={handleConfirm}
+          showCancel={modalConfig.showCancel}
+          showConfirm={modalConfig.showConfirm}
+        />
+      </>
     );
   }
 

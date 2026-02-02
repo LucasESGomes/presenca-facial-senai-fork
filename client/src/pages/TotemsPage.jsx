@@ -1,6 +1,9 @@
 import Layout from "../components/layout/Layout";
 import Search from "../components/ui/Search";
 import { useEffect, useState } from "react";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
+import useModal from "../hooks/useModal";
 import { Link } from "react-router-dom";
 import { useTotems } from "../hooks/useTotems";
 import {
@@ -29,6 +32,9 @@ export default function TotemsPage() {
   } = useTotems();
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const showToast = (text, type = "info") => setMessage({ text, type });
+  const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
 
   useEffect(() => {
     const initializeData = async () => {
@@ -56,9 +62,17 @@ export default function TotemsPage() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("Tem certeza que deseja excluir este totem?")) return;
-    await deleteTotem(id);
-    setFiltered((prev) => prev.filter((p) => p.id !== id && p._id !== id));
+    showModal({
+      title: "Excluir Totem",
+      message: "Tem certeza que deseja excluir este totem?",
+      type: "danger",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        await deleteTotem(id);
+        setFiltered((prev) => prev.filter((p) => p.id !== id && p._id !== id));
+      },
+    });
   }
 
   async function handleToggle(id) {
@@ -69,22 +83,32 @@ export default function TotemsPage() {
     const key = await getApiKey(id);
     if (key) {
       navigator.clipboard.writeText(key);
-      alert("API Key copiada para a área de transferência!");
+      showToast("API Key copiada para a área de transferência!", "success");
     } else {
-      alert("Não foi possível recuperar a chave API");
+      showToast("Não foi possível recuperar a chave API", "error");
     }
   }
 
   async function handleRegenerate(id) {
-    if (!window.confirm("Gerar uma nova chave API? A antiga será invalidada."))
-      return;
-    const key = await regenerateApiKey(id);
-    if (key) {
-      navigator.clipboard.writeText(key);
-      alert("Nova API Key gerada e copiada para a área de transferência!");
-    } else {
-      alert("Não foi possível gerar nova chave API");
-    }
+    showModal({
+      title: "Gerar nova API Key",
+      message: "Gerar uma nova chave API? A antiga será invalidada.",
+      type: "warning",
+      confirmText: "Gerar",
+      cancelText: "Cancelar",
+      onConfirm: async () => {
+        const key = await regenerateApiKey(id);
+        if (key) {
+          navigator.clipboard.writeText(key);
+          showToast(
+            "Nova API Key gerada e copiada para a área de transferência!",
+            "success",
+          );
+        } else {
+          showToast("Não foi possível gerar nova chave API", "error");
+        }
+      },
+    });
   }
 
   return (
@@ -256,6 +280,24 @@ export default function TotemsPage() {
           )}
         </div>
       </div>
+      <Toast
+        message={message.text}
+        type={message.type}
+        onClose={() => setMessage({ text: "", type: "" })}
+      />
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={hideModal}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={handleConfirm}
+        showCancel={modalConfig.showCancel}
+        showConfirm={modalConfig.showConfirm}
+      />
     </Layout>
   );
 }
