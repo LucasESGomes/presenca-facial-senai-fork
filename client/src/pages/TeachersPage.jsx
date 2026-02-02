@@ -20,13 +20,22 @@ export default function TeachersPage() {
   const navigate = useNavigate();
   const { classes, loadClasses } = useClasses();
 
-  const { users, loadUsers, deleteUser, loading: usersLoading } = useUsers();
+  const {
+    users,
+    loadUsers,
+    deleteUser,
+    loading: usersLoading,
+    page: hookPage,
+    totalPages,
+  } = useUsers();
 
   const [filteredTeachers, setFilteredTeachers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageLimit = 10;
   const [message, setMessage] = useState({ text: "", type: "" });
   const showToast = (text, type = "info") => setMessage({ text, type });
   const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
@@ -44,11 +53,11 @@ export default function TeachersPage() {
     const loadData = async () => {
       setLoading(true);
       await loadClasses();
-      await loadUsers();
+      await loadUsers({ page: currentPage, limit: pageLimit });
       setLoading(false);
     };
     loadData();
-  }, [loadClasses, loadUsers]);
+  }, [loadClasses, loadUsers, currentPage]);
 
   useEffect(() => {
     // start from users with role=professor
@@ -59,13 +68,13 @@ export default function TeachersPage() {
       filtered = filtered.filter(
         (teacher) =>
           teacher.name?.toLowerCase().includes(term) ||
-          teacher.email?.toLowerCase().includes(term)
+          teacher.email?.toLowerCase().includes(term),
       );
     }
 
     if (selectedDepartment !== "all") {
       filtered = filtered.filter(
-        (teacher) => teacher.department === selectedDepartment
+        (teacher) => teacher.department === selectedDepartment,
       );
     }
 
@@ -78,6 +87,13 @@ export default function TeachersPage() {
     setFilteredTeachers(filtered);
   }, [users, searchTerm, selectedDepartment, selectedStatus]);
 
+  // Keep local page in sync with hook page
+  useEffect(() => {
+    if (typeof hookPage === "number" && hookPage !== currentPage) {
+      setCurrentPage(hookPage);
+    }
+  }, [hookPage]);
+
   const handleDelete = (id) => {
     showModal({
       title: "Deletar Professor",
@@ -88,7 +104,7 @@ export default function TeachersPage() {
       onConfirm: async () => {
         const res = await deleteUser(id);
         if (res.success) {
-          await loadUsers();
+          await loadUsers({ page: currentPage, limit: pageLimit });
           showToast("Professor deletado com sucesso", "success");
         } else {
           showToast(res.message || "Erro ao deletar professor", "error");
@@ -120,7 +136,7 @@ export default function TeachersPage() {
   // Função para obter as turmas de um professor
   const getTeacherClasses = (teacherId) => {
     return classes.filter((cls) =>
-      cls.teachers?.some((t) => t._id === teacherId || t === teacherId)
+      cls.teachers?.some((t) => t._id === teacherId || t === teacherId),
     );
   };
 
@@ -342,6 +358,59 @@ export default function TeachersPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination controls */}
+          {typeof totalPages === "number" && totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <button
+                onClick={async () => {
+                  if (currentPage <= 1) return;
+                  const prev = currentPage - 1;
+                  setCurrentPage(prev);
+                  await loadUsers({ page: prev, limit: pageLimit });
+                }}
+                disabled={currentPage <= 1}
+                className="px-3 py-1 bg-gray-100 rounded"
+              >
+                Anterior
+              </button>
+
+              <div className="flex items-center gap-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (p) => (
+                    <button
+                      key={p}
+                      onClick={async () => {
+                        if (p === currentPage) return;
+                        setCurrentPage(p);
+                        await loadUsers({ page: p, limit: pageLimit });
+                      }}
+                      className={`px-3 py-1 rounded ${
+                        p === currentPage
+                          ? "bg-red-600 text-white"
+                          : "bg-gray-100"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (currentPage >= totalPages) return;
+                  const next = currentPage + 1;
+                  setCurrentPage(next);
+                  await loadUsers({ page: next, limit: pageLimit });
+                }}
+                disabled={currentPage >= totalPages}
+                className="px-3 py-1 bg-gray-100 rounded"
+              >
+                Próxima
+              </button>
             </div>
           )}
 

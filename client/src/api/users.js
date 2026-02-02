@@ -1,8 +1,8 @@
 import api from "../services/api";
 
 export const usersApi = {
-    // GET - Listar todos os usuários
-    getAll: () => api.get('/users'),
+    // GET - Listar todos os usuários (aceita query params: page, limit, ...)
+    getAll: (params) => api.get('/users', { params }),
 
     // GET - Obter usuário por ID
     getById: (id) => api.get(`/users/${id}`),

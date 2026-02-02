@@ -3,33 +3,48 @@ import { studentsApi } from "../api/students";
 
 export function useStudents() {
   const [students, setStudents] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Carregar todos os alunos
-  const loadStudents = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await studentsApi.getAll();
+  const loadStudents = useCallback(
+    async ({ page: p = 1, limit: l = 10 } = {}) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await studentsApi.getAll({ page: p, limit: l });
 
-      if (response.success) {
-        setStudents(
-          Array.isArray(response.data)
-            ? response.data
-            : Array.isArray(response.data?.data)
-              ? response.data.data
-              : [],
-        );
-      } else {
-        setError(response.message || "Erro ao carregar alunos");
+        if (response.success) {
+          if (Array.isArray(response.data)) {
+            setStudents(response.data);
+            setPage(1);
+            setLimit(response.data.length || l);
+            setTotalPages(1);
+          } else if (Array.isArray(response.data?.data)) {
+            setStudents(response.data.data);
+            setPage(response.data.page || p);
+            setLimit(response.data.limit || l);
+            setTotalPages(response.data.totalPages || 1);
+          } else {
+            setStudents([]);
+            setPage(p);
+            setLimit(l);
+            setTotalPages(1);
+          }
+        } else {
+          setError(response.message || "Erro ao carregar alunos");
+        }
+      } catch (err) {
+        setError(err.message || "Erro ao carregar alunos");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err.message || "Erro ao carregar alunos");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Carregar alunos por turma
   const loadStudentsByClass = useCallback(async (classCode) => {
@@ -228,6 +243,9 @@ export function useStudents() {
   return {
     // Estado
     students,
+    page,
+    limit,
+    totalPages,
     loading,
     error,
 
