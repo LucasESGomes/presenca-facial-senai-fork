@@ -11,9 +11,19 @@ import Search from "../components/ui/Search";
 import { FaPlus, FaSearch, FaEdit, FaTrash, FaEye } from "react-icons/fa";
 
 export default function StudentsPage() {
-  const { students, loading, error, loadStudents, deleteStudent } =
-    useStudents();
+  const {
+    students,
+    loading,
+    error,
+    loadStudents,
+    deleteStudent,
+    page: hookPage,
+    totalPages,
+  } = useStudents();
   const [filteredStudents, setFilteredStudents] = useState([]);
+  // pagination local state
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageLimit = 10;
   const [message, setMessage] = useState({ text: "", type: "" });
   const showToast = (text, type = "info") => setMessage({ text, type });
   const { modalConfig, showModal, hideModal, handleConfirm } = useModal();
@@ -23,14 +33,17 @@ export default function StudentsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadStudents();
-  }, [loadStudents]);
+    loadStudents({ page: currentPage, limit: pageLimit });
+  }, [loadStudents, currentPage]);
 
   // Sempre sincroniza o estado filtrado quando a lista de alunos mudar
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilteredStudents(students || []);
-  }, [students]);
+    if (typeof hookPage === "number" && hookPage !== currentPage) {
+      setCurrentPage(hookPage);
+    }
+  }, [students, hookPage, currentPage]);
 
   // Construir opções de filtro de turma a partir dos alunos carregados
   const classOptions = useMemo(() => {
@@ -271,6 +284,54 @@ export default function StudentsPage() {
           </div>
         )}
 
+        {/* Pagination controls */}
+        {typeof totalPages === "number" && totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <button
+              onClick={async () => {
+                if (currentPage <= 1) return;
+                const prev = currentPage - 1;
+                setCurrentPage(prev);
+                await loadStudents({ page: prev, limit: pageLimit });
+              }}
+              disabled={currentPage <= 1}
+              className="px-3 py-1 bg-gray-100 rounded"
+            >
+              Anterior
+            </button>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={async () => {
+                    if (p === currentPage) return;
+                    setCurrentPage(p);
+                    await loadStudents({ page: p, limit: pageLimit });
+                  }}
+                  className={`px-3 py-1 rounded ${
+                    p === currentPage ? "bg-red-600 text-white" : "bg-gray-100"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={async () => {
+                if (currentPage >= totalPages) return;
+                const next = currentPage + 1;
+                setCurrentPage(next);
+                await loadStudents({ page: next, limit: pageLimit });
+              }}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1 bg-gray-100 rounded"
+            >
+              Próxima
+            </button>
+          </div>
+        )}
         {/* Rodapé com resumo */}
         <div className="mt-6 text-sm text-gray-600">
           Exibindo <span className="font-bold">{filteredStudents.length}</span>{" "}

@@ -3,24 +3,36 @@ import { usersApi } from "../api/users";
 
 export function useUsers() {
   const [users, setUsers] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Exibir os usuários cadastrados
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async ({ page: p = 1, limit: l = 10 } = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await usersApi.getAll();
+      const response = await usersApi.getAll({ page: p, limit: l });
 
       if (response.success) {
-        setUsers(
-          Array.isArray(response.data)
-            ? response.data
-            : Array.isArray(response.data?.data)
-              ? response.data.data
-              : [],
-        );
+        if (Array.isArray(response.data)) {
+          setUsers(response.data);
+          setPage(1);
+          setLimit(response.data.length || l);
+          setTotalPages(1);
+        } else if (Array.isArray(response.data?.data)) {
+          setUsers(response.data.data);
+          setPage(response.data.page || p);
+          setLimit(response.data.limit || l);
+          setTotalPages(response.data.totalPages || 1);
+        } else {
+          setUsers([]);
+          setPage(p);
+          setLimit(l);
+          setTotalPages(1);
+        }
       } else {
         setError(response.message || "Erro ao carregar usuários");
       }
@@ -163,6 +175,9 @@ export function useUsers() {
   return {
     // Estado
     users,
+    page,
+    limit,
+    totalPages,
     teachers,
     loading,
     error,

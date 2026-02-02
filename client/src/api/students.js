@@ -2,8 +2,8 @@ import api from '../services/api';
 import facialApi from '../services/facialApi';
 
 export const studentsApi = {
-    // GET - Listar todos os alunos
-    getAll: () => api.get('/students'),
+    // GET - Listar todos os alunos (aceita query params: page, limit, ...)
+    getAll: (params) => api.get('/students', { params }),
 
     // GET - Listar alunos por turma
     getByClass: (classCode) => api.get(`/students/class/${classCode}`),
